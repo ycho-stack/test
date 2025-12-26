@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>증상 기반 감별·레드플래그 질문·기록(법적 방어) 지원</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#0f1620; --panel2:#0c121a;
+      --text:#e8eef6; --muted:#9bb0c6; --line:#1d2a3a;
+      --accent:#5aa9ff; --ok:#4fd1c5; --warn:#ffb020; --danger:#ff5a6a;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Apple SD Gothic Neo, Arial, "Helvetica Neue", Helvetica, sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:linear-gradient(180deg,#070a0f 0%, #0b0f14 55%, #070a0f 100%); color:var(--text); font-family:var(--sans);}
+    a{color:var(--accent); text-decoration:none}
+    .wrap{max-width:1200px; margin:0 auto; padding:22px 18px 48px;}
+    .topbar{
+      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
+      margin-bottom:14px;
+    }
+    .title h1{font-size:18px; margin:0 0 6px; letter-spacing:.2px}
+    .title p{margin:0; color:var(--muted); font-size:13px; line-height:1.4}
+    .badges{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+    .badge{font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.02)}
+    .badge b{font-weight:700}
+    .grid{display:grid; grid-template-columns: 1.05fr .95fr; gap:14px; align-items:start}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr; } .badges{justify-content:flex-start}}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.015) 100%);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px 12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,.12);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .card .hd h2{font-size:14px; margin:0; letter-spacing:.2px}
+    .card .bd{padding:14px}
+    .row{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+    @media (max-width: 560px){ .row{grid-template-columns:1fr;} }
+    label{display:block; font-size:12px; color:var(--muted); margin:0 0 6px}
+    input, select, textarea{
+      width:100%; color:var(--text); background:rgba(0,0,0,.22);
+      border:1px solid var(--line); border-radius:12px; padding:10px 11px;
+      outline:none; font-size:13px;
+    }
+    textarea{min-height:120px; resize:vertical; line-height:1.45}
+    .help{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45}
+    .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    button{
+      border:1px solid var(--line); background:rgba(255,255,255,.03);
+      color:var(--text); padding:10px 12px; border-radius:12px;
+      cursor:pointer; font-size:13px;
+    }
+    button.primary{border-color:rgba(90,169,255,.35); background:rgba(90,169,255,.12)}
+    button.danger{border-color:rgba(255,90,106,.35); background:rgba(255,90,106,.10)}
+    button:hover{filter:brightness(1.08)}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--line); background:rgba(255,255,255,.02);
+      color:var(--muted);
+    }
+    .alert{
+      border:1px solid rgba(255,90,106,.35);
+      background:rgba(255,90,106,.10);
+      padding:10px 12px; border-radius:14px; margin-bottom:12px;
+      display:none;
+    }
+    .alert.show{display:block}
+    .alert h3{margin:0 0 4px; font-size:13px; color:#ffd2d7}
+    .alert p{margin:0; font-size:12px; color:#ffd2d7; line-height:1.45}
+    .cols{display:grid; grid-template-columns:1fr; gap:12px}
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.02) 0%, rgba(0,0,0,.08) 100%);
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+    }
+    .panel .phd{
+      padding:12px 12px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background:rgba(0,0,0,.10);
+    }
+    .panel .phd h3{margin:0; font-size:13px}
+    .panel .pbd{padding:12px}
+    ul{margin:0; padding-left:18px}
+    li{margin:6px 0; color:var(--text); font-size:13px; line-height:1.45}
+    .muted{color:var(--muted)}
+    .small{font-size:12px}
+    .mono{font-family:var(--mono)}
+    .kvs{display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px}
+    @media (max-width: 560px){ .kvs{grid-template-columns:1fr;} }
+    .kv{border:1px solid var(--line); border-radius:14px; padding:10px 10px; background:rgba(0,0,0,.16)}
+    .kv .k{font-size:12px; color:var(--muted)}
+    .kv .v{font-size:13px; margin-top:4px}
+    .footer{
+      margin-top:14px; color:var(--muted); font-size:12px; line-height:1.5
+    }
+    .tabs{display:flex; gap:8px; flex-wrap:wrap}
+    .tab{padding:7px 10px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.02); font-size:12px; color:var(--muted); cursor:pointer}
+    .tab.active{border-color:rgba(90,169,255,.35); background:rgba(90,169,255,.12); color:var(--text)}
+    .hidden{display:none !important}
+    .hr{height:1px; background:var(--line); margin:10px 0}
+    .rightNote{
+      font-size:12px; color:var(--muted); line-height:1.45;
+      padding:10px 12px; border:1px dashed rgba(155,176,198,.35);
+      border-radius:14px; background:rgba(0,0,0,.10);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>증상 기반 감별·레드플래그 질문·기록(법적 방어) 지원</h1>
+        <p>
+          입력된 증상/상황을 바탕으로 <b>감별 3개</b>, <b>놓치면 위험한 질문 3개</b>, <b>기록·안전망·설명(방어) 문구</b>를 템플릿으로 제안합니다.
+          <span class="muted">서버 전송 없이 브라우저 로컬에서만 동작(옵션: 로컬 저장).</span>
+        </p>
+      </div>
+      <div class="badges">
+        <span class="badge"><b>⚠️</b> CDS: 임상판단 대체 아님</span>
+        <span class="badge"><b>🔒</b> PHI 입력 금지 권장</span>
+        <span class="badge"><b>📝</b> 텍스트 복사/내보내기</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT: Input -->
+      <div class="card">
+        <div class="hd">
+          <h2>1) 입력</h2>
+          <div class="tabs" id="modeTabs">
+            <div class="tab active" data-tab="triage">트리아지</div>
+            <div class="tab" data-tab="chat">챠팅 로그</div>
+            <div class="tab" data-tab="rules">룰 편집</div>
+          </div>
+        </div>
+
+        <div class="bd">
+          <!-- TRIAGE TAB -->
+          <div id="tab-triage">
+            <div class="alert" id="redAlert">
+              <h3>즉시 평가가 필요한 “레드 플래그” 가능성</h3>
+              <p id="redAlertText">입력 내용에 고위험 키워드가 포함되어 있습니다. 응급 대응/즉시 진료 필요 여부를 우선 확인하세요.</p>
+            </div>
+
+            <div class="row">
+              <div>
+                <label>주증상(자유서술)</label>
+                <textarea id="symptoms" placeholder="예: 3시간 전부터 시작된 흉통, 식은땀, 숨참. 기저질환: HTN."></textarea>
+                <div class="help">팁: 시간(언제부터), 강도/양상, 동반증상, 유발/완화요인, 기저질환·약물·임신/수술·외상 여부를 같이 써두면 룰 매칭이 잘 됩니다.</div>
+              </div>
+              <div>
+                <label>컨텍스트(간단)</label>
+                <div class="row">
+                  <div>
+                    <label class="small">나이</label>
+                    <input id="age" type="number" min="0" placeholder="예: 42" />
+                  </div>
+                  <div>
+                    <label class="small">성별</label>
+                    <select id="sex">
+                      <option value="">선택</option>
+                      <option value="F">여</option>
+                      <option value="M">남</option>
+                      <option value="O">기타/미상</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <div>
+                    <label class="small">임신/산후</label>
+                    <select id="preg">
+                      <option value="">해당 없음/미상</option>
+                      <option value="pregnant">임신 중</option>
+                      <option value="postpartum">산후(6주 이내)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="small">증상 지속</label>
+                    <input id="duration" placeholder="예: 3시간 / 2일 / 2주" />
+                  </div>
+                </div>
+
+                <div class="kvs">
+                  <div class="kv">
+                    <div class="k">활력징후(선택)</div>
+                    <div class="v muted small">BP / HR / RR / Temp / SpO2</div>
+                  </div>
+                  <div class="kv">
+                    <div class="k">과거력/약물(선택)</div>
+                    <div class="v muted small">DM/HTN/흡연/항응고제/면역저하 등</div>
+                  </div>
+                </div>
+
+                <div class="row" style="margin-top:10px">
+                  <div>
+                    <label class="small">활력/위험 메모</label>
+                    <input id="vitals" placeholder="예: BP 90/60 HR 120 SpO2 90%" />
+                  </div>
+                  <div>
+                    <label class="small">과거력/약물 메모</label>
+                    <input id="pmh" placeholder="예: DM, Warfarin 복용" />
+                  </div>
+                </div>
+
+                <div class="btns">
+                  <button class="primary" id="analyzeBtn">분석/템플릿 생성</button>
+                  <button id="newSessionBtn">새 세션</button>
+                  <button class="danger" id="clearBtn">전체 초기화</button>
+                </div>
+                <div class="help">
+                  ⚠️ <b>개인정보(PHI)</b>는 입력하지 않는 것을 권장합니다. (이 페이지는 서버 전송은 없지만, 기기/브라우저 저장 가능성이 있습니다.)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CHAT TAB -->
+          <div id="tab-chat" class="hidden">
+            <div class="rightNote">
+              여기는 “의료 상담 챠팅 기록”을 <b>방어에 유리한 형태로 정리</b>하는 탭입니다.  
+              환자 발언/의사 설명/환자 이해 확인/안전망(재내원 기준)/추적 계획을 빠짐없이 남기게 설계했습니다.
+            </div>
+            <div style="margin-top:12px">
+              <label>환자 메시지(요약)</label>
+              <textarea id="ptMsg" placeholder="환자가 한 말(요약) — 예: '가슴이 쥐어짜듯 아프고 숨이 차요. 오늘 처음이에요.'"></textarea>
+            </div>
+            <div style="margin-top:10px">
+              <label>의사 답변(설명/계획/안전망 포함)</label>
+              <textarea id="mdMsg" placeholder="의사가 한 말(요약) — 위험 설명, 권고, 대안, follow-up, 응급 시 행동 지침 등"></textarea>
+            </div>
+            <div class="btns">
+              <button class="primary" id="addChatBtn">로그에 추가</button>
+              <button id="copyChatBtn">챠팅 로그 복사</button>
+              <button id="downloadChatBtn">챠팅 로그 .txt 저장</button>
+              <button class="danger" id="clearChatBtn">챠팅 로그 삭제</button>
+            </div>
+            <div class="hr"></div>
+            <div>
+              <div class="pill">세션 로그 (로컬 저장 옵션)</div>
+              <pre id="chatLog" class="mono" style="white-space:pre-wrap; margin:10px 0 0; padding:12px; background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:14px; min-height:120px;">(아직 없음)</pre>
+              <div class="help">
+                문서화는 소송 방어에서 “타임라인/의사결정/환자 반응”을 보여주는 핵심 근거가 될 수 있습니다. :contentReference[oaicite:3]{index=3}  
+              </div>
+            </div>
+          </div>
+
+          <!-- RULES TAB -->
+          <div id="tab-rules" class="hidden">
+            <div class="rightNote">
+              룰은 <b>키워드 기반</b>으로 동작합니다. (간단/빠름)  
+              병원 프로토콜/가이드라인에 맞춰 키워드·출력 템플릿을 바꾸면 실제 사용성이 올라갑니다.
+            </div>
+            <div style="margin-top:12px">
+              <label>룰 JSON (편집 가능)</label>
+              <textarea id="rulesJson" class="mono" style="min-height:260px"></textarea>
+              <div class="btns">
+                <button class="primary" id="applyRulesBtn">룰 적용</button>
+                <button id="resetRulesBtn">기본 룰로 되돌리기</button>
+                <button id="copyRulesBtn">룰 JSON 복사</button>
+              </div>
+              <div class="help">
+                ⚠️ 이 룰은 “예시”입니다. 진단/치료 지침이 아니라 <b>기록과 질문 누락 방지</b>를 돕는 템플릿으로 쓰세요. CDS는 임상판단을 대체하지 않습니다. :contentReference[oaicite:4]{index=4}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Output -->
+      <div class="card">
+        <div class="hd">
+          <h2>2) 출력</h2>
+          <div class="pill" id="matchInfo">룰 매칭: -</div>
+        </div>
+
+        <div class="bd">
+          <div class="cols">
+            <div class="panel">
+              <div class="phd">
+                <h3>자동 감별 3개 (템플릿)</h3>
+                <div class="btns" style="margin:0">
+                  <button id="copyDxBtn">복사</button>
+                </div>
+              </div>
+              <div class="pbd">
+                <ul id="dxList"><li class="muted">입력 후 “분석/템플릿 생성”을 누르세요.</li></ul>
+                <div class="help">* “상위 3개”는 룰 기반 제안입니다. 실제 우선순위는 vital/위험인자/진찰/검사로 재정렬하세요.</div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="phd">
+                <h3>놓치면 위험한 질문 3개</h3>
+                <div class="btns" style="margin:0">
+                  <button id="copyQBtn">복사</button>
+                </div>
+              </div>
+              <div class="pbd">
+                <ul id="qList"><li class="muted">입력 후 자동 생성됩니다.</li></ul>
+                <div class="help">
+                  “안전망(safety-netting)”은 불확실성 상황에서 특히 중요하고, <b>어떤 경고 증상 시 어떻게 행동해야 하는지</b>를 명시하는 것이 핵심입니다. :contentReference[oaicite:5]{index=5}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="phd">
+                <h3>기록/챠팅(법적 방어에 도움) 문구</h3>
+                <div class="btns" style="margin:0">
+                  <button id="copyDocBtn">복사</button>
+                  <button id="downloadNoteBtn">노트 .txt 저장</button>
+                </div>
+              </div>
+              <div class="pbd">
+                <ul id="docList"><li class="muted">입력 후 자동 생성됩니다.</li></ul>
+                <div class="help">
+                  기록은 “무엇을/왜/언제/누가/어떻게 했고 환자가 어떻게 반응했는지”가 분명해야 합니다. :contentReference[oaicite:6]{index=6}  
+                  객관적 사실 위주로, 비난/추측/사고보고서 언급 등은 피하는 것이 일반적인 리스크관리 원칙입니다. :contentReference[oaicite:7]{index=7}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="phd">
+                <h3>한 번에 붙여넣는 “진료 노트” 텍스트</h3>
+                <div class="btns" style="margin:0">
+                  <button class="primary" id="copyNoteBtn">노트 복사</button>
+                </div>
+              </div>
+              <div class="pbd">
+                <pre id="noteOut" class="mono" style="white-space:pre-wrap; margin:0; padding:12px; background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:14px; min-height:180px;">(노트가 여기에 생성됩니다)</pre>
+                <div class="help">
+                  포함 요소: 증상요약/위험인자/핵심 감별/레드플래그 음성·양성/설명·공유의사결정/안전망/추적 계획/환자 이해 확인.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <b>면책</b>: 본 페이지는 “의료 템플릿/문서화 보조(CDS)”이며, 진단·치료를 지시하지 않습니다. 최종 의사결정은 임상의 책임 하에 이루어져야 합니다. :contentReference[oaicite:8]{index=8}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   1) 기본 룰(예시) — 병원 맞춤으로 바꾸는 용도
+   ========================= */
+
+const DEFAULT_RULES = [
+  {
+    id: "chest_pain",
+    name: "흉통/흉부불편",
+    keywords: ["흉통","가슴통증","가슴이","쥐어짜","압박감","胸痛","chest pain","방사통","식은땀"],
+    redFlags: ["식은땀","실신","호흡곤란","SpO2","저혈압","청색증","의식저하"],
+    topDx: [
+      "급성관상동맥증후군(ACS) 가능성",
+      "폐색전증(PE) 가능성",
+      "대동맥박리(Aortic dissection) 가능성"
+    ],
+    mustAsk: [
+      "통증 양상/방사/시작 시점/최대강도(갑자기? 점진?) + 동반(호흡곤란/실신/발한/구역)",
+      "위험인자: 흡연, HTN/DM, 가족력, 최근 수술/장거리, OCP/임신·산후, DVT 병력",
+      "현재 활력징후/SpO2/의식 상태 + 운동 시 악화/안정 시 호전 여부"
+    ],
+    docPrompts: [
+      "중증 가능성을 설명했고(ACS/PE/박리 등), 즉시 평가(응급실/검사) 필요성을 권고함.",
+      "환자 이해 여부를 확인했고, 동의/거부(거부 시 이유) 및 대안(관찰/추적)과 위험을 기록함.",
+      "악화/경고 증상(호흡곤란, 실신, 지속/악화되는 흉통, 신경학적 증상 등) 시 즉시 응급실 방문 안내(safety-netting) 기록."
+    ]
+  },
+  {
+    id: "dyspnea",
+    name: "호흡곤란",
+    keywords: ["호흡곤란","숨참","숨이 차","dyspnea","wheezing","천명","SpO2","기침","객혈"],
+    redFlags: ["SpO2","청색증","의식저하","흉통","저혈압","객혈","호흡수"],
+    topDx: [
+      "천식/기관지경련 혹은 COPD 악화",
+      "폐렴/감염성 호흡기 질환",
+      "폐색전증(PE) 또는 심부전 악화"
+    ],
+    mustAsk: [
+      "SpO2/호흡수/말하는 문장 가능 여부 + 청색증/의식저하 여부",
+      "흉통/객혈/다리부종·통증/최근 수술·장거리·임신·산후 등 혈전 위험",
+      "발열/오한/가래/노출력 + 기저 폐질환/심부전/흡연력"
+    ],
+    docPrompts: [
+      "초기 중증도(활력·SpO2·호흡수) 평가 및 재평가 결과를 기록함.",
+      "응급 징후가 의심될 경우 즉시 상급의료기관/응급실 평가 권고 및 환자 반응을 기록함.",
+      "치료/처치 후 반응(증상 변화, SpO2 변화 등)과 추적 계획을 기록함."
+    ]
+  },
+  {
+    id: "abdominal_pain",
+    name: "복통",
+    keywords: ["복통","배가","복부","abdominal pain","구토","혈변","토혈","설사","변비","반발통"],
+    redFlags: ["토혈","혈변","반발통","복부강직","의식저하","저혈압","고열","임신","산후"],
+    topDx: [
+      "급성복증(충수염/담낭염/천공/장폐색 등) 가능성",
+      "위장관 출혈(토혈/혈변 동반 시) 가능성",
+      "산부인과적 응급(임신 가능성/산후) 포함 감별 필요"
+    ],
+    mustAsk: [
+      "통증 위치/이동/반발통·강직 여부 + 구토/혈변/토혈/발열 동반 여부",
+      "임신 가능성/마지막 생리/산후 여부 + 골반통/질출혈 여부",
+      "수술력(유착), 항응고제/NSAID, 면역저하, 탈수, 소변증상(옆구리통) 여부"
+    ],
+    docPrompts: [
+      "급성복증/출혈/임신 관련 응급 가능성을 설명하고, 필요한 검사·이송 권고를 기록함.",
+      "복부진찰 소견(국소 압통/반발통/강직 등)과 활력징후를 구체적으로 기록함.",
+      "안전망: 악화, 지속 구토, 혈변/토혈, 고열, 실신/저혈압 시 즉시 내원/응급실 방문 안내 기록."
+    ]
+  },
+  {
+    id: "headache",
+    name: "두통",
+    keywords: ["두통","머리가","headache","번개","최악","경부강직","시야","마비","실신","구토"],
+    redFlags: ["갑자기","최악","번개","경부강직","신경학적","의식저하","발열","시야장애","임신","산후"],
+    topDx: [
+      "지주막하출혈/뇌혈관성 원인(번개두통/신경학적 징후 시)",
+      "뇌수막염/감염(발열+경부강직 등)",
+      "편두통/긴장성 두통(레드플래그 없을 때)"
+    ],
+    mustAsk: [
+      "발병 양상(갑자기/번개), '평생 최악' 여부 + 신경학적 결손(마비/언어/시야) 확인",
+      "발열/경부강직/의식변화/광과민/발진 등 감염 징후",
+      "임신·산후/고혈압/항응고제/외상/암/면역저하 등 위험인자"
+    ],
+    docPrompts: [
+      "레드플래그(급성발병, 신경학적 결손, 발열/경부강직 등) 유무를 문서화함.",
+      "고위험 소견 시 즉시 평가(영상/응급실) 필요성을 설명하고 환자 반응(수용/거부)을 기록함.",
+      "안전망: 신경학적 증상, 의식변화, 악화, 지속 구토/고열 시 즉시 내원 안내 기록."
+    ]
+  }
+];
+
+// 전역 상태
+let RULES = loadRules();
+let currentMatch = null;
+let chatEntries = loadChat();
+
+/* =========================
+   2) 탭 UI
+   ========================= */
+const tabs = document.querySelectorAll("#modeTabs .tab");
+tabs.forEach(t => t.addEventListener("click", () => {
+  tabs.forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  const tab = t.dataset.tab;
+  document.getElementById("tab-triage").classList.toggle("hidden", tab !== "triage");
+  document.getElementById("tab-chat").classList.toggle("hidden", tab !== "chat");
+  document.getElementById("tab-rules").classList.toggle("hidden", tab !== "rules");
+}));
+
+/* =========================
+   3) 유틸
+   ========================= */
+function nowStamp(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function normalize(s){ return (s||"").toLowerCase(); }
+function containsAny(text, arr){
+  const t = normalize(text);
+  return arr.some(k => t.includes(normalize(k)));
+}
+function top3(arr){
+  return arr.slice(0,3);
+}
+function copyText(txt){
+  navigator.clipboard.writeText(txt).then(()=>{
+    toast("복사했습니다");
+  }).catch(()=>{
+    alert("복사 실패. 브라우저 권한을 확인하세요.");
+  });
+}
+function downloadText(filename, txt){
+  const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function toast(msg){
+  const el = document.createElement("div");
+  el.textContent = msg;
+  el.style.position="fixed";
+  el.style.bottom="18px";
+  el.style.left="50%";
+  el.style.transform="translateX(-50%)";
+  el.style.padding="10px 12px";
+  el.style.border="1px solid rgba(90,169,255,.35)";
+  el.style.background="rgba(90,169,255,.12)";
+  el.style.borderRadius="12px";
+  el.style.color="white";
+  el.style.zIndex=9999;
+  el.style.fontSize="13px";
+  el.style.boxShadow="0 10px 25px rgba(0,0,0,.35)";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1200);
+}
+
+/* =========================
+   4) 룰 로딩/저장
+   ========================= */
+function loadRules(){
+  try{
+    const raw = localStorage.getItem("cds_rules_v1");
+    if(!raw) return DEFAULT_RULES;
+    const parsed = JSON.parse(raw);
+    if(Array.isArray(parsed) && parsed.length) return parsed;
+    return DEFAULT_RULES;
+  }catch(e){
+    return DEFAULT_RULES;
+  }
+}
+function saveRules(rules){
+  localStorage.setItem("cds_rules_v1", JSON.stringify(rules, null, 2));
+}
+function loadChat(){
+  try{
+    const raw = localStorage.getItem("cds_chat_v1");
+    if(!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){ return []; }
+}
+function saveChat(){
+  localStorage.setItem("cds_chat_v1", JSON.stringify(chatEntries, null, 2));
+}
+
+/* =========================
+   5) 분석 엔진(키워드 기반)
+   ========================= */
+function matchRule(symText, ctxText){
+  const full = `${symText}\n${ctxText}`;
+  let best = null;
+  let bestScore = 0;
+
+  for(const r of RULES){
+    const hits = r.keywords.filter(k => normalize(full).includes(normalize(k)));
+    const score = hits.length;
+    if(score > bestScore){
+      bestScore = score;
+      best = { rule:r, hits };
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+function detectRedFlags(rule, fullText){
+  // 룰별 redFlags + 공통 레드 플래그 키워드
+  const common = ["의식저하","실신","경련","마비","말이 어눌","청색증","토혈","혈변","갑자기","최악","경부강직","SpO2","저혈압","호흡곤란","흉통"];
+  const flags = [...new Set([...(rule?.redFlags||[]), ...common])];
+  const hit = flags.filter(k => normalize(fullText).includes(normalize(k)));
+  return hit;
+}
+
+function buildOutputs(sym, age, sex, preg, dur, vitals, pmh){
+  const ctx = `age:${age||"-"} sex:${sex||"-"} preg:${preg||"-"} duration:${dur||"-"} vitals:${vitals||"-"} pmh:${pmh||"-"}`;
+  const match = matchRule(sym, ctx);
+  currentMatch = match;
+
+  const full = `${sym}\n${ctx}`;
+
+  const redHits = detectRedFlags(match?.rule, full);
+  renderRedAlert(redHits);
+
+  const rule = match?.rule;
+  const dx = rule ? top3(rule.topDx) : [
+    "룰 미매칭: 핵심 증상/시간경과/동반증상/위험인자를 더 구체적으로 입력해 보세요.",
+    "룰 미매칭: 병원 프로토콜에 맞는 키워드 룰을 추가/편집하세요.",
+    "룰 미매칭: 감별은 활력징후·진찰·검사 기반으로 재정렬이 필요합니다."
+  ];
+  const qs = rule ? top3(rule.mustAsk) : [
+    "레드플래그(의식/호흡/흉통/신경학적 결손/출혈/고열) 여부를 먼저 확인했나요?",
+    "현재 활력징후(SpO2 포함)와 악화 속도를 확인했나요?",
+    "위험인자(임신·산후/항응고제/면역저하/최근 수술·장거리 등)를 확인했나요?"
+  ];
+  const docs = rule ? top3(rule.docPrompts) : [
+    "환자 서술/핵심 소견/레드플래그 유무를 객관적으로 기록함.",
+    "불확실성과 고위험 가능성을 설명했고, 권고(검사/이송/관찰) 및 환자 반응을 기록함.",
+    "안전망: 악화/경고 증상 시 즉시 내원(응급실) + 추적 계획(재평가/검사 결과 확인) 기록."
+  ];
+
+  // note 텍스트 구성(SOAP-ish)
+  const note = [
+    `=== 방문 요약 (자동 템플릿) ===`,
+    `Timestamp: ${nowStamp()}`,
+    ``,
+    `[S] 주호소/경과`,
+    `- ${sym || "(미입력)"}`,
+    `- Duration: ${dur || "-"}`,
+    ``,
+    `[Context]`,
+    `- Age/Sex: ${age || "-"} / ${sex || "-"}`,
+    `- Pregnancy/Postpartum: ${preg || "-"}`,
+    `- Vitals: ${vitals || "-"}`,
+    `- PMH/Meds: ${pmh || "-"}`,
+    ``,
+    `[Assessment] 핵심 감별(템플릿)`,
+    ...dx.map((d,i)=>`- #${i+1} ${d}`),
+    ``,
+    `[Risk check] 놓치면 위험한 확인 질문(템플릿)`,
+    ...qs.map((q,i)=>`- Q${i+1}. ${q}`),
+    ``,
+    `[Plan/Documentation prompts] 기록·설명·안전망`,
+    ...docs.map((d,i)=>`- ${d}`),
+    ``,
+    `[Safety-netting] (권장 문구 예시)`,
+    `- “현재로서는 원인이 확정되지 않아 경과 관찰/추가 평가가 필요합니다.”`,
+    `- “아래 경고 증상(예: 의식변화/호흡곤란/지속·악화 통증/출혈/신경학적 증상)이 있으면 즉시 응급실로 가세요.”`,
+    `- “추적 계획: 재평가 시점/검사 결과 확인 방법/연락 경로를 안내했습니다.”`,
+  ].join("\n");
+
+  return { match, dx, qs, docs, note, redHits };
+}
+
+/* =========================
+   6) 렌더
+   ========================= */
+function renderList(el, items){
+  el.innerHTML = "";
+  items.forEach(x=>{
+    const li = document.createElement("li");
+    li.textContent = x;
+    el.appendChild(li);
+  });
+}
+function renderMatchInfo(match){
+  const el = document.getElementById("matchInfo");
+  if(!match){
+    el.textContent = "룰 매칭: 없음";
+    return;
+  }
+  const { rule, hits } = match;
+  el.textContent = `룰 매칭: ${rule.name} (hits: ${hits.length})`;
+}
+function renderRedAlert(redHits){
+  const box = document.getElementById("redAlert");
+  const txt = document.getElementById("redAlertText");
+  if(redHits.length){
+    box.classList.add("show");
+    txt.textContent = `감지된 키워드: ${redHits.slice(0,8).join(", ")}${redHits.length>8?" ...":""}  → 응급/즉시평가 필요 여부를 우선 확인하세요.`;
+  }else{
+    box.classList.remove("show");
+  }
+}
+function renderChat(){
+  const pre = document.getElementById("chatLog");
+  if(!chatEntries.length){
+    pre.textContent = "(아직 없음)";
+    return;
+  }
+  const text = chatEntries.map((e,i)=>(
+`[${i+1}] ${e.time}
+- 환자: ${e.patient}
+- 의사: ${e.doctor}
+`)).join("\n");
+  pre.textContent = text.trim();
+}
+
+/* =========================
+   7) 이벤트
+   ========================= */
+document.getElementById("analyzeBtn").addEventListener("click", ()=>{
+  const sym = document.getElementById("symptoms").value.trim();
+  const age = document.getElementById("age").value.trim();
+  const sex = document.getElementById("sex").value;
+  const preg = document.getElementById("preg").value;
+  const dur = document.getElementById("duration").value.trim();
+  const vitals = document.getElementById("vitals").value.trim();
+  const pmh = document.getElementById("pmh").value.trim();
+
+  const out = buildOutputs(sym, age, sex, preg, dur, vitals, pmh);
+
+  renderMatchInfo(out.match);
+  renderList(document.getElementById("dxList"), out.dx);
+  renderList(document.getElementById("qList"), out.qs);
+  renderList(document.getElementById("docList"), out.docs);
+  document.getElementById("noteOut").textContent = out.note;
+
+  // 세션 자동 저장(입력만)
+  localStorage.setItem("cds_last_input_v1", JSON.stringify({sym, age, sex, preg, dur, vitals, pmh}));
+});
+
+document.getElementById("copyDxBtn").addEventListener("click", ()=>{
+  const items = [...document.querySelectorAll("#dxList li")].map(li=>li.textContent);
+  copyText(items.map((x,i)=>`#${i+1} ${x}`).join("\n"));
+});
+document.getElementById("copyQBtn").addEventListener("click", ()=>{
+  const items = [...document.querySelectorAll("#qList li")].map(li=>li.textContent);
+  copyText(items.map((x,i)=>`Q${i+1}. ${x}`).join("\n"));
+});
+document.getElementById("copyDocBtn").addEventListener("click", ()=>{
+  const items = [...document.querySelectorAll("#docList li")].map(li=>li.textContent);
+  copyText(items.map((x,i)=>`- ${x}`).join("\n"));
+});
+document.getElementById("copyNoteBtn").addEventListener("click", ()=>{
+  copyText(document.getElementById("noteOut").textContent);
+});
+document.getElementById("downloadNoteBtn").addEventListener("click", ()=>{
+  downloadText(`visit-note_${new Date().toISOString().slice(0,10)}.txt`, document.getElementById("noteOut").textContent);
+});
+
+document.getElementById("newSessionBtn").addEventListener("click", ()=>{
+  document.getElementById("symptoms").value = "";
+  document.getElementById("duration").value = "";
+  document.getElementById("vitals").value = "";
+  document.getElementById("pmh").value = "";
+  toast("새 세션 시작");
+});
+
+document.getElementById("clearBtn").addEventListener("click", ()=>{
+  if(!confirm("입력/출력/저장된 마지막 입력을 초기화할까요?")) return;
+  ["symptoms","age","duration","vitals","pmh"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("sex").value="";
+  document.getElementById("preg").value="";
+  document.getElementById("dxList").innerHTML = `<li class="muted">입력 후 “분석/템플릿 생성”을 누르세요.</li>`;
+  document.getElementById("qList").innerHTML = `<li class="muted">입력 후 자동 생성됩니다.</li>`;
+  document.getElementById("docList").innerHTML = `<li class="muted">입력 후 자동 생성됩니다.</li>`;
+  document.getElementById("noteOut").textContent = "(노트가 여기에 생성됩니다)";
+  document.getElementById("matchInfo").textContent = "룰 매칭: -";
+  document.getElementById("redAlert").classList.remove("show");
+  localStorage.removeItem("cds_last_input_v1");
+  toast("초기화 완료");
+});
+
+/* CHAT */
+document.getElementById("addChatBtn").addEventListener("click", ()=>{
+  const p = document.getElementById("ptMsg").value.trim();
+  const m = document.getElementById("mdMsg").value.trim();
+  if(!p || !m){ alert("환자/의사 내용을 모두 입력하세요."); return; }
+  chatEntries.push({ time: nowStamp(), patient: p, doctor: m });
+  saveChat();
+  renderChat();
+  document.getElementById("ptMsg").value="";
+  document.getElementById("mdMsg").value="";
+  toast("로그에 추가");
+});
+document.getElementById("copyChatBtn").addEventListener("click", ()=>{
+  copyText(document.getElementById("chatLog").textContent);
+});
+document.getElementById("downloadChatBtn").addEventListener("click", ()=>{
+  downloadText(`chat-log_${new Date().toISOString().slice(0,10)}.txt`, document.getElementById("chatLog").textContent);
+});
+document.getElementById("clearChatBtn").addEventListener("click", ()=>{
+  if(!confirm("챠팅 로그를 삭제할까요?")) return;
+  chatEntries = [];
+  saveChat();
+  renderChat();
+  toast("삭제 완료");
+});
+
+/* RULES */
+document.getElementById("applyRulesBtn").addEventListener("click", ()=>{
+  try{
+    const parsed = JSON.parse(document.getElementById("rulesJson").value);
+    if(!Array.isArray(parsed) || !parsed.length) throw new Error("룰은 배열이어야 합니다.");
+    // 아주 최소한의 스키마 체크
+    parsed.forEach(r=>{
+      ["id","name","keywords","topDx","mustAsk","docPrompts"].forEach(k=>{
+        if(!(k in r)) throw new Error(`필수 필드 누락: ${k}`);
+      });
+      if(!Array.isArray(r.keywords)) throw new Error("keywords는 배열이어야 합니다.");
+      if(!Array.isArray(r.topDx) || !Array.isArray(r.mustAsk) || !Array.isArray(r.docPrompts)) throw new Error("topDx/mustAsk/docPrompts는 배열이어야 합니다.");
+    });
+    RULES = parsed;
+    saveRules(RULES);
+    toast("룰 적용 완료");
+  }catch(e){
+    alert("룰 JSON 오류: " + e.message);
+  }
+});
+document.getElementById("resetRulesBtn").addEventListener("click", ()=>{
+  RULES = DEFAULT_RULES;
+  saveRules(RULES);
+  document.getElementById("rulesJson").value = JSON.stringify(RULES, null, 2);
+  toast("기본 룰로 복원");
+});
+document.getElementById("copyRulesBtn").addEventListener("click", ()=>{
+  copyText(document.getElementById("rulesJson").value);
+});
+
+/* =========================
+   8) 초기 로딩(마지막 입력/룰/챗)
+   ========================= */
+function init(){
+  document.getElementById("rulesJson").value = JSON.stringify(RULES, null, 2);
+
+  // 마지막 입력 복원
+  try{
+    const raw = localStorage.getItem("cds_last_input_v1");
+    if(raw){
+      const d = JSON.parse(raw);
+      document.getElementById("symptoms").value = d.sym || "";
+      document.getElementById("age").value = d.age || "";
+      document.getElementById("sex").value = d.sex || "";
+      document.getElementById("preg").value = d.preg || "";
+      document.getElementById("duration").value = d.dur || "";
+      document.getElementById("vitals").value = d.vitals || "";
+      document.getElementById("pmh").value = d.pmh || "";
+    }
+  }catch(e){}
+
+  renderChat();
+}
+init();
+</script>
+</body>
+</html>
