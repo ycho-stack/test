@@ -105,4 +105,860 @@
         </div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-        <span cl
+        <span class="badge">⚠️ 진단/치료 대체 아님</span>
+        <span class="badge">🔒 PHI 최소 입력</span>
+        <span class="badge">📝 복사 1클릭</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="card">
+        <div class="hd">
+          <h2>입력</h2>
+          <div class="toggleRow">
+            <span class="pill" id="modePill">자동 생성</span>
+            <div class="seg">
+              <button id="shortBtn" class="active" type="button">짧게</button>
+              <button id="detailBtn" type="button">조금 더</button>
+            </div>
+          </div>
+        </div>
+        <div class="bd">
+          <div class="row">
+            <div>
+              <label>나이 (필수)</label>
+              <input id="age" type="number" min="0" placeholder="예: 42" />
+            </div>
+            <div>
+              <label>성별 (필수)</label>
+              <select id="sex">
+                <option value="">선택</option>
+                <option value="F">여</option>
+                <option value="M">남</option>
+                <option value="O">기타/미상</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <label>주증상/상황 (필수)</label>
+            <textarea id="cc" placeholder="예: '가슴이 쥐어짜듯 아프고 식은땀이 나요. 2시간 전부터. 숨도 차요.'"></textarea>
+          </div>
+
+          <details>
+            <summary>추가 정보(선택) — 있으면 더 specific하게</summary>
+            <div class="row" style="margin-top:10px">
+              <div>
+                <label>증상 시작/기간</label>
+                <input id="duration" placeholder="예: 2시간 전 / 3일째" />
+              </div>
+              <div>
+                <label>활력징후/SpO2</label>
+                <input id="vitals" placeholder="예: BP 90/60 HR 120 SpO2 90%" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <div>
+                <label>기저질환/약물</label>
+                <input id="pmh" placeholder="예: HTN, DM / 항응고제 복용" />
+              </div>
+              <div>
+                <label>임신/산후</label>
+                <select id="preg">
+                  <option value="">해당 없음/미상</option>
+                  <option value="pregnant">임신 중</option>
+                  <option value="postpartum">산후(6주 이내)</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <label>추가 메모</label>
+              <input id="memo" placeholder="예: 눌렀을 때 아픔, 식후 악화, 발열, 객혈, 흑색변, 편측 마비 등" />
+            </div>
+          </details>
+
+          <div class="btns">
+            <button class="primary" id="genBtn">생성</button>
+            <button id="copyAllBtn">EMR 노트 복사</button>
+            <button class="danger" id="resetBtn">초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card">
+        <div class="hd">
+          <h2>출력</h2>
+          <span class="pill" id="categoryPill">카테고리: 자동</span>
+        </div>
+        <div class="bd">
+          <div class="alert" id="alertBox">
+            <div><b>레드플래그 가능성</b> 키워드 감지 → “위험질환 배제” 우선</div>
+            <div class="muted" id="alertText" style="margin-top:6px;font-size:12px"></div>
+          </div>
+
+          <div class="outGrid">
+            <div class="tile">
+              <div class="thd">
+                <h3>감별 3 (가장 가능성 높은 질환 + ICD-10)</h3>
+                <button type="button" id="copyDxBtn">복사</button>
+              </div>
+              <div class="tbd"><ul id="dxList"><li class="muted">‘생성’ 누르면 채워짐</li></ul></div>
+            </div>
+
+            <div class="tile">
+              <div class="thd">
+                <h3>놓치면 위험한 질문 3 (위험질환 3개 기준)</h3>
+                <button type="button" id="copyQBtn">복사</button>
+              </div>
+              <div class="tbd"><ul id="qList"><li class="muted">‘생성’ 누르면 채워짐</li></ul></div>
+            </div>
+
+            <div class="tile">
+              <div class="thd">
+                <h3>환자에게 바로 전달(안전망) 3줄 (위험질환 3개 기준)</h3>
+                <button type="button" id="copySNBtn">복사</button>
+              </div>
+              <div class="tbd"><ul id="snList"><li class="muted">‘생성’ 누르면 채워짐</li></ul></div>
+            </div>
+
+            <div class="tile">
+              <div class="thd">
+                <h3>다음 액션 3줄 (가능성 #1 진단 기준)</h3>
+                <button type="button" id="copyNextBtn">복사</button>
+              </div>
+              <div class="tbd"><ul id="nextList"><li class="muted">‘생성’ 누르면 채워짐</li></ul></div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px" class="tile">
+            <div class="thd">
+              <h3>EMR에 그대로 붙여넣기</h3>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="primary" id="copyNoteBtn">노트 복사</button>
+                <button type="button" id="downloadBtn">.txt 저장</button>
+              </div>
+            </div>
+            <div class="tbd"><pre id="noteOut" class="mono">(여기에 생성됨)</pre></div>
+          </div>
+
+          <div class="footer">면책: 문구/누락 방지 보조 도구이며 진단·치료를 대체하지 않습니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let DETAIL = "short";
+const $ = (id) => document.getElementById(id);
+
+function toast(msg){
+  const el = document.createElement("div");
+  el.textContent = msg;
+  el.style.position="fixed"; el.style.bottom="18px"; el.style.left="50%";
+  el.style.transform="translateX(-50%)"; el.style.padding="10px 12px";
+  el.style.border="1px solid rgba(90,169,255,.35)";
+  el.style.background="rgba(90,169,255,.12)";
+  el.style.borderRadius="12px"; el.style.color="white"; el.style.zIndex=9999;
+  el.style.fontSize="13px"; el.style.boxShadow="0 10px 25px rgba(0,0,0,.35)";
+  document.body.appendChild(el); setTimeout(()=>el.remove(), 1200);
+}
+function normalize(s){ return (s||"").toLowerCase(); }
+function hasAny(text, kws){
+  const t = normalize(text);
+  return kws.some(k=>t.includes(normalize(k)));
+}
+function copyText(txt){
+  navigator.clipboard.writeText(txt).then(()=>toast("복사 완료")).catch(()=>alert("복사 실패(권한 확인)"));
+}
+function downloadText(filename, txt){
+  const blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function setList(el, items){
+  el.innerHTML="";
+  items.forEach(x=>{ const li=document.createElement("li"); li.textContent=x; el.appendChild(li); });
+}
+function nowStamp(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function sexK(sex){ if(sex==="M") return "남"; if(sex==="F") return "여"; return "성별 미상"; }
+function safe(v, fallback="미상"){ return (v && String(v).trim().length) ? String(v).trim() : fallback; }
+
+function dxLine(x){ return `${x.d} (ICD-10: ${x.icd})`; }
+function dxCopy(dx){ return dx.map((x,i)=>`#${i+1} ${dxLine(x)}`).join("\n"); }
+
+// 공통 레드플래그
+const COMMON_RED = ["의식저하","실신","경련","마비","말이 어눌","청색증","저혈압","spO2","객혈","토혈","혈변","흑색변","흉통","호흡곤란","갑자기","번개","최악","경부강직","고열"];
+
+// “즉시/당일” 같은 표현 자동 보정 (레드 플래그/활력 기반)
+function deriveUrgency(fullText, vitalsText){
+  const t = normalize(fullText + " " + vitalsText);
+  const urgent = hasAny(t, ["저혈압","의식저하","실신","경련","청색증","객혈","토혈","혈변","흑색변"]) ||
+                 hasAny(t, ["갑자기","번개","최악"]) ||
+                 hasAny(t, ["spO2 8","spO2 7","spO2 6","spO2:8","spO2:7","spO2:6"]) ||
+                 hasAny(t, ["bp 8","bp 7"]) ||
+                 /spO2\s*[:=]?\s*8\d/.test(t) || /spo2\s*[:=]?\s*7\d/.test(t);
+  return urgent ? "즉시" : "가능하면 당일";
+}
+
+function detectRed(fullText){
+  const t = normalize(fullText);
+  const hits = [];
+  for(const k of COMMON_RED){ if(t.includes(normalize(k))) hits.push(k); }
+  return [...new Set(hits)];
+}
+
+/* =========================
+   카테고리 + 로직
+   - likelyDx: 흔한/가능성 높은 3개 (질환+ICD)
+   - dangerDx: 놓치면 위험한 3개 (질환+ICD)
+   - q/sn: dangerDx 3개에 1:1 대응
+   - next: likely #1 기준
+   ========================= */
+
+const CATS = [
+  {
+    id:"chest",
+    name:"흉통/흉부불편",
+    match:["흉통","가슴통증","가슴이","압박감","쥐어짜","방사","식은땀","chest pain","胸痛","턱","왼팔","등으로"],
+    // 가능성 높은(흔한) 후보 3개(순서는 상황에 따라 바뀜)
+    likelyVariants: [
+      {
+        id:"msk",
+        when:["눌러","압통","움직","자세","근육","갈비","기침할때","깊게숨"],
+        dx:[
+          {d:"늑연골염/늑골연골 증후군(Costochondritis/Tietze)", icd:"M94.0"},
+          {d:"흉벽 근육/건 손상(Thoracic wall muscle strain)", icd:"S29.011A"},
+          {d:"위식도역류질환(GERD)", icd:"K21.9"},
+        ],
+        next:(u)=>[
+          `재현성 통증(압통/움직임/호흡)에 일치하면 근골격 가능성↑ → NSAID/국소온열/활동조절 고려.`,
+          `다만 위험 신호(호흡곤란·실신·지속 악화·냉한·방사통) 있으면 ${u} 심장/폐 원인 배제 우선.`,
+          `48–72시간 내 호전 없거나 악화 시 재평가(ECG/흉부평가 포함) 계획 잡기.`
+        ]
+      },
+      {
+        id:"gerd",
+        when:["속쓰림","신물","트림","식후","누우면","가슴쓰림","명치","산"],
+        dx:[
+          {d:"위식도역류질환(GERD)", icd:"K21.9"},
+          {d:"급성/만성 위염(Gastritis, unspecified)", icd:"K29.70"},
+          {d:"늑연골염/흉벽통증(Costochondritis)", icd:"M94.0"},
+        ],
+        next:(u)=>[
+          `식후/누우면 악화·속쓰림 동반이면 GERD 가능성↑ → PPI/H2 blocker + 생활요법(식사/카페인/야식) 안내.`,
+          `흉통은 위험 원인과 겹칠 수 있어 위험 신호 있으면 ${u} ECG 등으로 우선 배제.`,
+          `2–4주 반응 없거나 연하곤란/체중감소/흑색변 등 경고증상 시 상부위장관 평가 고려.`
+        ]
+      },
+      {
+        id:"anxiety",
+        when:["불안","공황","과호흡","손저림","가슴두근","죽을것같","호흡이빠르","스트레스"],
+        dx:[
+          {d:"공황장애(Panic disorder)", icd:"F41.0"},
+          {d:"불안장애(Anxiety disorder, unspecified)", icd:"F41.9"},
+          {d:"위식도역류질환(GERD)", icd:"K21.9"},
+        ],
+        next:(u)=>[
+          `공황/과호흡 양상이면 불안/공황 가능성↑ → 호흡조절, 트리거, 단기 추적 및 필요 시 약물/정신건강 연계.`,
+          `단, 흉통 첫 발생/위험인자/레드플래그 있으면 ${u} 심장/폐 원인 배제 후 진단.`,
+          `재발 시 선별(PHQ-4/GAD-7 등) + 안전망(응급 증상 시 즉시 내원) 제공.`
+        ]
+      }
+    ],
+    dangerDx:[
+      {d:"급성심근경색(AMI)", icd:"I21.9"},
+      {d:"폐색전증(PE)", icd:"I26.99"},
+      {d:"대동맥박리(Aortic dissection)", icd:"I71.00"},
+    ],
+    dangerQ:(u)=>[
+      `AMI 배제: 운동 시 악화/휴식 시 완화? 방사통(팔·턱)·식은땀·구역·실신 동반?`,
+      `PE 배제: 갑작 호흡곤란/흉통(흡기 시 악화)? 다리 부종·통증? 최근 수술/장거리/임신·산후?`,
+      `박리 배제: “찢어지는” 갑작 극심 통증(흉부/등)? 신경학적 증상·실신·혈압차 느낌?`
+    ],
+    dangerSN:(u)=>[
+      `심장 관련 위험(AMI) 의심 증상(지속 흉통, 식은땀, 방사통, 실신)이 있으면 ${u} 응급실로 가세요.`,
+      `폐색전증 위험(갑작 숨참, 흉통+객혈, 다리부종/통증)이 있으면 ${u} 응급실로 가세요.`,
+      `대동맥박리 의심(갑작 ‘찢어지는’ 통증, 신경학적 증상/실신)이 있으면 ${u} 즉시 119/응급실.`
+    ],
+    baseDx:[ // fallback
+      {d:"위식도역류질환(GERD)", icd:"K21.9"},
+      {d:"늑연골염(Costochondritis)", icd:"M94.0"},
+      {d:"공황장애(Panic disorder)", icd:"F41.0"},
+    ],
+    pickVariant(full){
+      const t = normalize(full);
+      // msk > gerd > anxiety 순으로 잡되, 없으면 null
+      if(hasAny(t, this.likelyVariants[0].when)) return this.likelyVariants[0];
+      if(hasAny(t, this.likelyVariants[1].when)) return this.likelyVariants[1];
+      if(hasAny(t, this.likelyVariants[2].when)) return this.likelyVariants[2];
+      return null;
+    }
+  },
+
+  {
+    id:"dyspnea",
+    name:"호흡곤란",
+    match:["호흡곤란","숨참","숨이 차","dyspnea","천명","wheezing","spO2","객혈","청색증","기침","가래"],
+    likelyVariants:[
+      {
+        id:"uri",
+        when:["기침","가래","인후","콧물","감기","미열","목아픔"],
+        dx:[
+          {d:"급성 기관지염(Acute bronchitis, unspecified)", icd:"J20.9"},
+          {d:"상기도감염(Acute URI)", icd:"J06.9"},
+          {d:"천식(Asthma with acute exacerbation)", icd:"J45.901"},
+        ],
+        next:(u)=>[
+          `상기도/기관지염 양상이면 보존적 치료(수분, 대증) + 폐렴 경고증상(고열·호흡수↑·흉통) 체크.`,
+          `천명/기관지경련 있으면 흡입기관지확장제 고려, SpO2 낮으면 ${u} 즉시 평가.`,
+          `48–72시간 내 악화/호전 없으면 재평가(CXR 등) 계획.`
+        ]
+      },
+      {
+        id:"asthma",
+        when:["천명","쌕쌕","흡입기","알레르기","야간악화"],
+        dx:[
+          {d:"천식(Asthma with acute exacerbation)", icd:"J45.901"},
+          {d:"급성 기관지염(Acute bronchitis)", icd:"J20.9"},
+          {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+        ],
+        next:(u)=>[
+          `천명/기관지경련 중심이면 천식 악화 가능성↑ → SABA, 필요 시 전신 스테로이드/피크플로우 추적.`,
+          `SpO2↓, 문장 말하기 어려움, 보조근 사용이면 ${u} 응급 평가/산소.`,
+          `감염 동반 의심(발열·국소 흉부통증) 시 CXR 및 항생제 적응증 평가.`
+        ]
+      },
+      {
+        id:"pna",
+        when:["고열","발열","오한","흉통","누런가래","폐렴"],
+        dx:[
+          {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+          {d:"급성 기관지염(Acute bronchitis)", icd:"J20.9"},
+          {d:"천식(Asthma with acute exacerbation)", icd:"J45.901"},
+        ],
+        next:(u)=>[
+          `발열/가래/흉통이면 폐렴 가능성↑ → 활력/SpO2 기반 중증도 판단 + CXR 고려.`,
+          `저산소/빈호흡/저혈압이면 ${u} 즉시 상급 평가(응급실).`,
+          `외래 가능 시 항생제 적응증 + 24–48시간 내 악화 시 재평가 안전망.`
+        ]
+      },
+      {
+        id:"hf",
+        when:["누우면","기침","야간호흡곤란","다리부종","체중증가","거품가래","심부전"],
+        dx:[
+          {d:"심부전(Heart failure, unspecified)", icd:"I50.9"},
+          {d:"급성 폐부종(Acute pulmonary edema)", icd:"J81.0"},
+          {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+        ],
+        next:(u)=>[
+          `기좌호흡/야간호흡곤란/부종이면 심부전 가능성↑ → 청진/부종/체중변화 확인, 필요 시 흉부영상/BNP 고려.`,
+          `SpO2↓, 청색증, 거품가래, 저혈압이면 ${u} 즉시 응급실/산소/이뇨제 평가.`,
+          `외래 관찰이면 단기 추적(24–48h)과 악화 기준을 명확히.`
+        ]
+      }
+    ],
+    dangerDx:[
+      {d:"폐색전증(PE)", icd:"I26.99"},
+      {d:"기흉(Pneumothorax)", icd:"J93.9"},
+      {d:"급성 폐부종(Acute pulmonary edema)", icd:"J81.0"},
+    ],
+    dangerQ:(u)=>[
+      `PE 배제: 갑작 숨참/흉통? 다리 부종·통증? 최근 수술/장거리/임신·산후/호르몬?`,
+      `기흉 배제: 갑작 편측 흉통+숨참? 한쪽 호흡음 감소 느낌? (외상/기저 폐질환)`,
+      `폐부종 배제: 누우면 악화(기좌호흡), 야간 호흡곤란, 다리부종/체중증가 동반?`
+    ],
+    dangerSN:(u)=>[
+      `PE 의심(갑작 숨참+흉통/객혈/다리부종)이면 ${u} 응급실로 가세요.`,
+      `기흉 의심(갑작 편측 흉통+숨참)이면 ${u} 응급실로 가세요.`,
+      `폐부종/심부전 의심(누우면 숨참, 야간 악화, 청색증/SpO2↓)이면 ${u} 즉시 내원/응급실.`
+    ],
+    baseDx:[
+      {d:"급성 기관지염(Acute bronchitis)", icd:"J20.9"},
+      {d:"천식 악화(Asthma with acute exacerbation)", icd:"J45.901"},
+      {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+    ],
+    pickVariant(full){
+      const t = normalize(full);
+      // hf > pna > asthma > uri 순 (응급 놓치기 줄이면서도 흔한 패턴)
+      if(hasAny(t, this.likelyVariants[3].when)) return this.likelyVariants[3];
+      if(hasAny(t, this.likelyVariants[2].when)) return this.likelyVariants[2];
+      if(hasAny(t, this.likelyVariants[1].when)) return this.likelyVariants[1];
+      if(hasAny(t, this.likelyVariants[0].when)) return this.likelyVariants[0];
+      return null;
+    }
+  },
+
+  {
+    id:"abd",
+    name:"복통",
+    match:["복통","배가","복부","abdominal","구토","설사","토혈","혈변","흑색변","오른쪽아래","우하복부","명치","우상복부","옆구리","배뇨통"],
+    likelyVariants:[
+      {
+        id:"ge",
+        when:["설사","구토","복통+설사","먹은뒤","장염","탈수"],
+        dx:[
+          {d:"급성 위장염/장염(Gastroenteritis, unspecified)", icd:"K52.9"},
+          {d:"기능성 소화불량(Functional dyspepsia)", icd:"K30"},
+          {d:"변비(Constipation, unspecified)", icd:"K59.00"},
+        ],
+        next:(u)=>[
+          `장염 양상이면 수분/전해질 + 대증치료, 탈수/고열/혈변 여부 확인.`,
+          `혈변/고열/지속 구토/심한 국소 압통 있으면 ${u} 응급 원인 배제 우선.`,
+          `24–48시간 내 악화/호전 없으면 재평가(복부진찰/검사) 계획.`
+        ]
+      },
+      {
+        id:"const",
+        when:["변비","변을 못","가스가","딱딱한변","배변후 호전"],
+        dx:[
+          {d:"변비(Constipation, unspecified)", icd:"K59.00"},
+          {d:"과민성장증후군(IBS, without diarrhea)", icd:"K58.9"},
+          {d:"기능성 소화불량(Functional dyspepsia)", icd:"K30"},
+        ],
+        next:(u)=>[
+          `변비 패턴이면 식이/수분/완하제(PEG 등) + 경고증상(혈변/체중감소/야간통증) 확인.`,
+          `국소 반발통/발열/지속 악화면 ${u} 급성복증 배제 우선.`,
+          `1주 내 호전 없거나 재발하면 원인평가(약물, 내분비, 대장평가) 고려.`
+        ]
+      },
+      {
+        id:"gastritis",
+        when:["명치","속쓰림","신물","식후","NSAID","술","커피","공복통"],
+        dx:[
+          {d:"위식도역류질환(GERD)", icd:"K21.9"},
+          {d:"급성/만성 위염(Gastritis, unspecified)", icd:"K29.70"},
+          {d:"소화성궤양(Peptic ulcer, site unspecified)", icd:"K27.9"},
+        ],
+        next:(u)=>[
+          `상복부 작열감/NSAID 연관이면 GERD/위염/궤양 가능성↑ → PPI + NSAID 중단/위험약 확인.`,
+          `흑색변/토혈/어지럼/저혈압이면 ${u} 출혈 배제 위해 즉시 의뢰.`,
+          `2–4주 반응 없거나 재발/체중감소/연하곤란 시 H. pylori/내시경 평가 고려.`
+        ]
+      },
+      {
+        id:"uti",
+        when:["배뇨통","빈뇨","절박뇨","혈뇨","옆구리통"],
+        dx:[
+          {d:"급성 방광염(Acute cystitis without hematuria)", icd:"N30.00"},
+          {d:"신우신염(Acute pyelonephritis)", icd:"N10"},
+          {d:"요로결석(Calculus of kidney)", icd:"N20.0"},
+        ],
+        next:(u)=>[
+          `배뇨증상 중심이면 UTI 가능성↑ → UA/배양(필요 시) 후 항생제 적응증 판단.`,
+          `발열·옆구리통·오한이면 신우신염 가능성 → ${u} 중증도 평가/필요 시 의뢰.`,
+          `혈뇨/산통이면 결석 평가(영상/통증조절) 및 악화 시 재내원 기준 제시.`
+        ]
+      }
+    ],
+    // 위험질환 3개(복통은 성별/가임기 따라 하나 바뀜)
+    dangerDxByCtx:(ctx)=> {
+      if(ctx.isReproF){
+        return [
+          {d:"급성 충수염(Acute appendicitis)", icd:"K35.80"},
+          {d:"급성 담낭염(Acute cholecystitis)", icd:"K81.0"},
+          {d:"자궁외임신(Ectopic pregnancy, unspecified)", icd:"O00.9"},
+        ];
+      }
+      return [
+        {d:"급성 충수염(Acute appendicitis)", icd:"K35.80"},
+        {d:"급성 담낭염(Acute cholecystitis)", icd:"K81.0"},
+        {d:"위장관 출혈(GI hemorrhage, unspecified)", icd:"K92.2"},
+      ];
+    },
+    dangerQ:(u,ctx)=> {
+      const third = ctx.isReproF
+        ? "자궁외임신 배제: 임신 가능/생리 지연? 질출혈·어지럼/실신? (소변/혈청 hCG 확인)"
+        : "GI 출혈 배제: 흑색변/혈변/토혈, 어지럼·실신, 항응고제/NSAID 복용?";
+      return [
+        "충수염 배제: 통증이 배꼽→우하복부로 이동? 기침/보행 시 악화? 반발통/발열?",
+        "담낭염 배제: 우상복부 통증+발열? 식후(기름진 음식) 악화? 황달/진한 소변?",
+        third
+      ];
+    },
+    dangerSN:(u,ctx)=> {
+      const third = ctx.isReproF
+        ? `가임기 여성에서 임신 가능 + 복통/질출혈/실신이 있으면 ${u} 즉시 응급실(자궁외임신 배제).`
+        : `흑색변/토혈/어지럼/실신(출혈 의심)이 있으면 ${u} 즉시 응급실로 가세요.`;
+      return [
+        `우하복부 국소 압통/반발통·발열·지속 악화(충수염 의심)이면 ${u} 응급실로 가세요.`,
+        `우상복부 통증+발열/황달(담낭염/담도 문제 의심)이면 ${u} 응급실로 가세요.`,
+        third
+      ];
+    },
+    baseDx:[
+      {d:"급성 위장염/장염(Gastroenteritis)", icd:"K52.9"},
+      {d:"변비(Constipation)", icd:"K59.00"},
+      {d:"위식도역류질환(GERD)", icd:"K21.9"},
+    ],
+    pickVariant(full){
+      const t = normalize(full);
+      // uti > gastritis > const > ge
+      if(hasAny(t, this.likelyVariants[3].when)) return this.likelyVariants[3];
+      if(hasAny(t, this.likelyVariants[2].when)) return this.likelyVariants[2];
+      if(hasAny(t, this.likelyVariants[1].when)) return this.likelyVariants[1];
+      if(hasAny(t, this.likelyVariants[0].when)) return this.likelyVariants[0];
+      return null;
+    }
+  },
+
+  {
+    id:"head",
+    name:"두통",
+    match:["두통","머리가","headache","편측","박동","오심","구토","빛","소리","경부","코막힘","부비동","번개","최악","마비","시야","경련"],
+    likelyVariants:[
+      {
+        id:"tension",
+        when:["띠","조이는","양측","근육","목","스트레스","어깨결림"],
+        dx:[
+          {d:"긴장형 두통(Tension-type headache, unspecified)", icd:"G44.209"},
+          {d:"경추성 두통/경추통(Cervicalgia)", icd:"M54.2"},
+          {d:"편두통(Migraine, unspecified)", icd:"G43.909"},
+        ],
+        next:(u)=>[
+          `띠 조이는 양상/근긴장 동반이면 긴장형 두통 가능성↑ → 진통제 + 수면/자세/근육이완 교육.`,
+          `새로운 양상/레드플래그(급성발병·신경학적 결손·발열/경부강직) 있으면 ${u} 영상/응급 평가.`,
+          `1–2주 내 재발/지속 시 원인평가(약물과용, 시력/혈압, 2차성) 계획.`
+        ]
+      },
+      {
+        id:"migraine",
+        when:["편측","박동","오심","구토","빛","소리","전조","두근","움직이면악화"],
+        dx:[
+          {d:"편두통(Migraine, unspecified)", icd:"G43.909"},
+          {d:"긴장형 두통(Tension-type headache)", icd:"G44.209"},
+          {d:"급성 부비동염(Acute sinusitis, unspecified)", icd:"J01.90"},
+        ],
+        next:(u)=>[
+          `편측 박동성+오심/광과민이면 편두통 가능성↑ → 급성기 치료(트립탄/NSAID) 및 트리거 교육.`,
+          `신경학적 결손/급성 최악 두통이면 ${u} 즉시 2차성 배제(영상).`,
+          `빈번 재발이면 예방치료 고려 + 약물과용 두통 체크.`
+        ]
+      },
+      {
+        id:"sinus",
+        when:["코막힘","누런콧물","얼굴통증","부비동","앞이마","숙이면악화","치통"],
+        dx:[
+          {d:"급성 부비동염(Acute sinusitis, unspecified)", icd:"J01.90"},
+          {d:"긴장형 두통(Tension-type headache)", icd:"G44.209"},
+          {d:"편두통(Migraine, unspecified)", icd:"G43.909"},
+        ],
+        next:(u)=>[
+          `비강 증상+얼굴통/숙이면 악화면 부비동염 가능성↑ → 대증치료, 세균성 기준이면 항생제 평가.`,
+          `시력/의식변화/고열/경부강직이면 ${u} 합병증/중증 감염 배제 위해 즉시 평가.`,
+          `1주 이상 지속/악화 시 재평가(진찰/영상 필요성) 계획.`
+        ]
+      }
+    ],
+    dangerDx:[
+      {d:"지주막하출혈(Subarachnoid hemorrhage)", icd:"I60.9"},
+      {d:"수막염(Meningitis, unspecified)", icd:"G03.9"},
+      {d:"뇌경색(Cerebral infarction, unspecified)", icd:"I63.9"},
+    ],
+    dangerQ:(u)=>[
+      "SAH 배제: 갑자기(번개) 시작? ‘평생 최악’ 두통? 운동/성행위/기침 후 발생?",
+      "수막염 배제: 발열+경부강직+의식변화/광과민/발진 동반?",
+      "뇌졸중 배제: 편측 마비/감각저하, 말 어눌함, 시야장애, 보행장애 동반?"
+    ],
+    dangerSN:(u)=>[
+      `갑작 ‘번개/최악’ 두통이면 ${u} 즉시 응급실(출혈 배제)로 가세요.`,
+      `발열·경부강직·의식변화가 있으면 ${u} 즉시 응급실(수막염 배제)로 가세요.`,
+      `편측 마비/언어·시야 장애가 있으면 ${u} 즉시 119/응급실(뇌졸중)로 가세요.`
+    ],
+    baseDx:[
+      {d:"긴장형 두통(Tension-type headache)", icd:"G44.209"},
+      {d:"편두통(Migraine)", icd:"G43.909"},
+      {d:"급성 부비동염(Acute sinusitis)", icd:"J01.90"},
+    ],
+    pickVariant(full){
+      const t = normalize(full);
+      if(hasAny(t, this.likelyVariants[2].when)) return this.likelyVariants[2];
+      if(hasAny(t, this.likelyVariants[1].when)) return this.likelyVariants[1];
+      if(hasAny(t, this.likelyVariants[0].when)) return this.likelyVariants[0];
+      return null;
+    }
+  },
+];
+
+function pickCategory(full){
+  for(const c of CATS){ if(hasAny(full, c.match)) return c; }
+  return null;
+}
+
+function buildCtx(input){
+  const ageN = parseInt(input.age || "", 10);
+  const isReproF = input.sex==="F" && !Number.isNaN(ageN) && ageN >= 12 && ageN <= 55;
+  return { isReproF };
+}
+
+/* =========================
+   EMR note
+   ========================= */
+function buildNote(input, catName, likelyDx, dangerDx, qs, sn, next){
+  const ts = nowStamp();
+  const age = safe(input.age, "나이 미상");
+  const sex = sexK(input.sex);
+  const cc = safe(input.cc, "주증상 미상");
+
+  const duration = safe(input.duration, "미상");
+  const vitals = safe(input.vitals, "미상");
+  const pmh = safe(input.pmh, "미상");
+  const preg = input.preg ? (input.preg==="pregnant" ? "임신 중" : "산후(6주 이내)") : "미상/해당 없음";
+  const memo = safe(input.memo, "없음/미상");
+
+  const ddxLikely = likelyDx.map((x,i)=>`- #${i+1} ${dxLine(x)}`).join("\n");
+  const ddxDanger = dangerDx.map((x,i)=>`- *Danger#${i+1} ${dxLine(x)}`).join("\n");
+
+  const qBlock = qs.map((q,i)=>`- Q${i+1}) ${q}  [ ]예  [ ]아니오  [ ]미상`).join("\n");
+  const snBlock = sn.map(s=>`- ${s}`).join("\n");
+  const nextBlock = next.map(s=>`- ${s}`).join("\n");
+
+  const base = [
+    `=== Encounter Note (paste-ready) ===`,
+    `Timestamp: ${ts}`,
+    `Category: ${catName}`,
+    ``,
+    `[Chief Complaint]`,
+    `- ${age}세 ${sex} / 주증상: ${cc}`,
+    ``,
+    `[HPI]`,
+    `- 시작/기간: ${duration}`,
+    `- 추가 메모/동반: ${memo}`,
+    ``,
+    `[Vitals/Key Data]`,
+    `- ${vitals}`,
+    ``,
+    `[PMH/Meds / Pregnancy]`,
+    `- 기저질환/약물: ${pmh}`,
+    `- 임신/산후: ${preg}`,
+    ``,
+    `[Assessment - Likely Dx (Top 3, ICD-10)]`,
+    `${ddxLikely}`,
+    ``,
+    `[Must-not-miss (Danger Dx, ICD-10) - used for questions/safety-net]`,
+    `${ddxDanger}`,
+    ``,
+    `[High-risk screen (asked)]`,
+    `${qBlock}`,
+    ``,
+    `[Plan / Next steps (based on Likely #1)]`,
+    `${nextBlock}`,
+    ``,
+    `[Safety-net (patient instructions)]`,
+    `${snBlock}`,
+    ``,
+    `[Patient understanding]`,
+    `- 설명 및 주의사항 안내했고, 환자 이해/동의 여부: [ ]이해함  [ ]추가설명 필요  [ ]미상`,
+  ];
+
+  if(DETAIL==="detail"){
+    base.push(
+      ``,
+      `[Documentation add-on]`,
+      `- 환자 선택(검사/이송/응급실 방문) 및 거부/지연 시 사유: [ ]없음  [ ]있음( )  [ ]미상`,
+      `- 추적 계획(재평가/검사 결과 확인/연락): [ ]안내함  [ ]미상`
+    );
+  }
+  return base.join("\n");
+}
+
+/* =========================
+   render
+   ========================= */
+function renderAll(){
+  const input = {
+    age: $("age").value,
+    sex: $("sex").value,
+    cc: $("cc").value,
+    duration: $("duration").value,
+    vitals: $("vitals").value,
+    pmh: $("pmh").value,
+    preg: $("preg").value,
+    memo: $("memo").value,
+  };
+
+  const fullText = `${input.age} ${input.sex} ${input.cc} ${input.duration} ${input.vitals} ${input.pmh} ${input.preg} ${input.memo}`.trim();
+  const urgencyWord = deriveUrgency(fullText, input.vitals || "");
+  const cat = pickCategory(fullText);
+
+  const catName = cat ? cat.name : "일반(범용)";
+  $("categoryPill").textContent = `카테고리: ${catName}`;
+
+  const redHits = detectRed(fullText);
+  if(redHits.length){
+    $("alertBox").classList.add("show");
+    $("alertText").textContent = `감지 키워드: ${redHits.slice(0,8).join(", ")}${redHits.length>8?" ...":""}`;
+  }else{
+    $("alertBox").classList.remove("show");
+    $("alertText").textContent = "";
+  }
+
+  // === 핵심 로직 ===
+  let likelyDx, dangerDx, qs, sn, next;
+
+  const ctx = buildCtx(input);
+
+  if(cat){
+    const v = cat.pickVariant(fullText);
+    // 감별(가능성 높은 3) = variant 있으면 variant.dx, 없으면 baseDx
+    likelyDx = v ? v.dx : cat.baseDx;
+
+    // 위험질환 3 = cat의 dangerDx (복통은 맥락 따라 변함)
+    if(cat.id==="abd"){
+      dangerDx = cat.dangerDxByCtx(ctx);
+      qs = cat.dangerQ(urgencyWord, ctx);
+      sn = cat.dangerSN(urgencyWord, ctx);
+    }else{
+      dangerDx = cat.dangerDx;
+      qs = cat.dangerQ(urgencyWord);
+      sn = cat.dangerSN(urgencyWord);
+    }
+
+    // 다음 액션 = 가능성 #1 기반 (variant 있으면 variant.next)
+    if(v && typeof v.next === "function"){
+      next = v.next(urgencyWord);
+    }else{
+      // variant 못 잡아도, baseDx[0] 기준으로 최소 액션
+      next = [
+        `가능성 높은 진단(#1: ${dxLine(likelyDx[0])}) 기준으로 1차 처치/대증치료 후 단기 추적 계획.`,
+        `레드플래그/활력 이상 시 ${urgencyWord} 위험질환 배제(검사/의뢰/응급실).`,
+        `호전 없거나 악화 시 재평가(추가 검사/의뢰) 기준을 환자에게 문장으로 안내.`
+      ];
+    }
+
+    // 안전망/질문 문구에 urgencyWord 삽입되도록 sn/qs는 이미 반영됨
+  } else {
+    // 카테고리 못 잡으면 “범용”: 흔한 3개(증상 기반) + 위험질환 질문/안전망(범용)
+    likelyDx = [
+      {d:"상기도감염(Acute URI)", icd:"J06.9"},
+      {d:"급성 기관지염(Acute bronchitis)", icd:"J20.9"},
+      {d:"급성 위장염/장염(Gastroenteritis)", icd:"K52.9"},
+    ];
+    dangerDx = [
+      {d:"급성심근경색(AMI)", icd:"I21.9"},
+      {d:"뇌졸중(뇌경색, unspecified)", icd:"I63.9"},
+      {d:"위장관 출혈(GI hemorrhage)", icd:"K92.2"},
+    ];
+    qs = [
+      "심장/호흡 응급: 지속 흉통·호흡곤란·실신/의식변화 있나요?",
+      "신경학적 응급: 편측 마비·말 어눌함·시야장애 있나요?",
+      "출혈/쇼크: 토혈/혈변/흑색변·어지럼·실신 있나요?"
+    ];
+    sn = [
+      `지속 흉통/호흡곤란/실신·의식변화가 있으면 ${urgencyWord} 응급실로 가세요.`,
+      `편측 마비/언어·시야 장애가 있으면 ${urgencyWord} 119/응급실로 가세요.`,
+      `토혈/혈변/흑색변·실신이 있으면 ${urgencyWord} 응급실로 가세요.`
+    ];
+    next = [
+      `가능성 높은 진단(#1: ${dxLine(likelyDx[0])}) 중심으로 대증치료 + 단기 추적.`,
+      `레드플래그/활력 이상 시 ${urgencyWord} 위험질환 배제(검사/의뢰).`,
+      `호전 없거나 악화 시 재평가 계획과 응급 기준을 명확히 안내.`
+    ];
+  }
+
+  // DETAIL 모드면 1줄씩만 보강 (길어지지 않게)
+  if(DETAIL==="detail"){
+    next = [...next];
+    next[0] = next[0] + " (기록: 호전/악화 기준, 추적 시간 포함)";
+  }
+
+  // Render
+  setList($("dxList"), likelyDx.map(dxLine));
+  setList($("qList"), qs);
+  setList($("snList"), sn);
+  setList($("nextList"), next);
+
+  $("noteOut").textContent = buildNote(input, catName, likelyDx, dangerDx, qs, sn, next);
+
+  localStorage.setItem("pcp_cds_last_v4", JSON.stringify(input));
+}
+
+function resetAll(){
+  ["age","cc","duration","vitals","pmh","memo"].forEach(id=>$(id).value="");
+  $("sex").value=""; $("preg").value="";
+  $("dxList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
+  $("qList").innerHTML  = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
+  $("snList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
+  $("nextList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
+  $("noteOut").textContent="(여기에 생성됨)";
+  $("categoryPill").textContent="카테고리: 자동";
+  $("alertBox").classList.remove("show");
+  localStorage.removeItem("pcp_cds_last_v4");
+}
+
+// Events
+$("genBtn").addEventListener("click", ()=>{
+  if(!$("age").value.trim() || !$("sex").value || !$("cc").value.trim()){
+    toast("필수 입력 일부가 비어 있어도 ‘미상’으로 생성합니다");
+  }
+  renderAll();
+});
+$("copyNoteBtn").addEventListener("click", ()=>copyText($("noteOut").textContent));
+$("copyAllBtn").addEventListener("click", ()=>copyText($("noteOut").textContent));
+$("downloadBtn").addEventListener("click", ()=>downloadText(`emr_note_${new Date().toISOString().slice(0,10)}.txt`, $("noteOut").textContent));
+
+$("resetBtn").addEventListener("click", ()=>{
+  if(!confirm("입력/출력을 초기화할까요?")) return;
+  resetAll(); toast("초기화 완료");
+});
+
+$("copyDxBtn").addEventListener("click", ()=>{
+  const items=[...document.querySelectorAll("#dxList li")].map(li=>li.textContent);
+  copyText(items.map((x,i)=>`#${i+1} ${x}`).join("\n"));
+});
+$("copyQBtn").addEventListener("click", ()=>{
+  const items=[...document.querySelectorAll("#qList li")].map(li=>li.textContent);
+  copyText(items.map((x,i)=>`Q${i+1}. ${x}`).join("\n"));
+});
+$("copySNBtn").addEventListener("click", ()=>{
+  const items=[...document.querySelectorAll("#snList li")].map(li=>li.textContent);
+  copyText(items.map(x=>`- ${x}`).join("\n"));
+});
+$("copyNextBtn").addEventListener("click", ()=>{
+  const items=[...document.querySelectorAll("#nextList li")].map(li=>li.textContent);
+  copyText(items.map(x=>`- ${x}`).join("\n"));
+});
+
+$("shortBtn").addEventListener("click", ()=>{
+  DETAIL="short";
+  $("shortBtn").classList.add("active");
+  $("detailBtn").classList.remove("active");
+  toast("짧게 모드");
+  if($("noteOut").textContent && $("noteOut").textContent !== "(여기에 생성됨)") renderAll();
+});
+$("detailBtn").addEventListener("click", ()=>{
+  DETAIL="detail";
+  $("detailBtn").classList.add("active");
+  $("shortBtn").classList.remove("active");
+  toast("조금 더 모드");
+  if($("noteOut").textContent && $("noteOut").textContent !== "(여기에 생성됨)") renderAll();
+});
+
+// init restore
+(function init(){
+  try{
+    const raw = localStorage.getItem("pcp_cds_last_v4");
+    if(raw){
+      const d = JSON.parse(raw);
+      $("age").value = d.age || "";
+      $("sex").value = d.sex || "";
+      $("cc").value = d.cc || "";
+      $("duration").value = d.duration || "";
+      $("vitals").value = d.vitals || "";
+      $("pmh").value = d.pmh || "";
+      $("preg").value = d.preg || "";
+      $("memo").value = d.memo || "";
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
