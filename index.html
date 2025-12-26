@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>1차 의료용: 감별·레드플래그·EMR 복붙</title>
+  <title>1차 의료용: 감별(질환+ICD)·위험 질문·EMR 복붙</title>
   <style>
     :root{
       --bg:#0b0f14; --panel:#0f1620; --panel2:#0c121a;
       --text:#e8eef6; --muted:#9bb0c6; --line:#1d2a3a;
-      --accent:#5aa9ff; --warn:#ffb020; --danger:#ff5a6a; --ok:#4fd1c5;
+      --accent:#5aa9ff; --danger:#ff5a6a;
       --shadow: 0 10px 30px rgba(0,0,0,.35);
       --radius: 16px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -110,6 +110,7 @@
     .seg button:last-child{border-right:0}
     .seg button.active{background:rgba(90,169,255,.12); color:var(--text)}
     .footer{margin-top:10px; color:var(--muted); font-size:12px; line-height:1.5}
+    .icd{color:var(--muted); font-size:12px}
   </style>
 </head>
 
@@ -117,9 +118,9 @@
   <div class="wrap">
     <div class="topbar">
       <div>
-        <h1>1차 의료기관용: 감별 3 · 위험 질문 3 · EMR 복붙 노트</h1>
+        <h1>1차 의료기관용: 감별 3(질환+ICD) · 위험 질문 3 · EMR 복붙</h1>
         <div class="sub">
-          필수 입력은 <b>나이·성별·주증상</b>만. 나머지는 선택. 출력은 짧게 보여주고, 아래에 <b>EMR에 바로 붙여넣는 노트</b>를 생성합니다.
+          필수 입력은 <b>나이·성별·주증상</b>만. 나머지는 선택. 출력은 짧게 보이고, 아래에 <b>EMR에 바로 붙여넣는 노트</b>를 생성합니다.
         </div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
@@ -165,7 +166,7 @@
           </div>
 
           <details>
-            <summary>추가 정보(선택) — 있으면 더 정확한 문구로 생성됨</summary>
+            <summary>추가 정보(선택) — 있으면 더 specific하게 생성</summary>
             <div class="row" style="margin-top:10px">
               <div>
                 <label>증상 시작/기간</label>
@@ -192,7 +193,7 @@
             </div>
             <div style="margin-top:10px">
               <label>추가 메모</label>
-              <input id="memo" placeholder="예: 알레르기, 최근 수술/장거리, 외상, 고위험 병력 등" />
+              <input id="memo" placeholder="예: 최근 수술/장거리, 외상, 발열, 객혈, 흑색변 등" />
             </div>
           </details>
 
@@ -203,7 +204,7 @@
           </div>
 
           <div class="hint">
-            팁: 여기 목적은 “떠먹여주는 EMR 문구”라서, 정보가 부족하면 <b>‘미상’으로 자동 채움</b>.
+            정보가 부족하면 <b>‘미상’</b>으로 자동 채우고도 동작. (목적: EMR 복붙)
           </div>
         </div>
       </div>
@@ -216,14 +217,14 @@
         </div>
         <div class="bd">
           <div class="alert" id="alertBox">
-            <div><b>레드플래그 가능성</b> 키워드가 감지됨 → 응급/즉시평가 필요 여부를 먼저 확인</div>
+            <div><b>레드플래그 가능성</b> 키워드 감지 → 응급/즉시평가 필요 여부부터 확인</div>
             <div class="muted" id="alertText" style="margin-top:6px;font-size:12px"></div>
           </div>
 
           <div class="outGrid">
             <div class="tile">
               <div class="thd">
-                <h3>감별 3</h3>
+                <h3>감별 3 (질환 + ICD-10)</h3>
                 <button type="button" id="copyDxBtn">복사</button>
               </div>
               <div class="tbd">
@@ -253,11 +254,11 @@
 
             <div class="tile">
               <div class="thd">
-                <h3>EMR “챠팅/전화” 노트 3줄</h3>
-                <button type="button" id="copyChatNoteBtn">복사</button>
+                <h3>다음 액션(1차 진료용) 3줄</h3>
+                <button type="button" id="copyNextBtn">복사</button>
               </div>
               <div class="tbd">
-                <ul id="chatNoteList"><li class="muted">‘생성’ 누르면 채워짐</li></ul>
+                <ul id="nextList"><li class="muted">‘생성’ 누르면 채워짐</li></ul>
               </div>
             </div>
           </div>
@@ -284,16 +285,7 @@
   </div>
 
 <script>
-/* =========================
-   UX 목표
-   - 룰/미매칭 없음
-   - 필수: 나이/성별/주증상
-   - 출력은 짧게(4타일) + EMR 노트
-   - 카테고리 추정은 내부 키워드(숨김)로만 하고, 안 맞으면 범용 템플릿
-   ========================= */
-
 let DETAIL = "short"; // short | detail
-
 const $ = (id) => document.getElementById(id);
 
 function toast(msg){
@@ -333,7 +325,9 @@ function downloadText(filename, txt){
 function setList(el, items){
   el.innerHTML="";
   items.forEach(x=>{
-    const li=document.createElement("li"); li.textContent=x; el.appendChild(li);
+    const li=document.createElement("li");
+    li.textContent=x;
+    el.appendChild(li);
   });
 }
 function nowStamp(){
@@ -341,143 +335,6 @@ function nowStamp(){
   const pad = n => String(n).padStart(2,"0");
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-
-/* =========================
-   내부 키워드 카테고리(사용자에게 "룰" 노출 없음)
-   ========================= */
-const CATS = [
-  {
-    id:"chest",
-    name:"흉통/흉부불편",
-    match:["흉통","가슴통증","가슴이","쥐어짜","압박감","방사","식은땀","chest pain","胸痛"],
-    red:["실신","의식저하","호흡곤란","저혈압","SpO2","청색증","신경학적","마비"],
-    dx:[
-      "급성관상동맥증후군(ACS) 가능성",
-      "폐색전증(PE) 가능성",
-      "대동맥박리 가능성"
-    ],
-    q:[
-      "통증 시작(갑작/점진), 방사(턱/팔), 발한·구역·실신·호흡곤란 동반?",
-      "위험인자: HTN/DM/흡연/가족력, 최근 수술·장거리, OCP/임신·산후, DVT 병력?",
-      "현재 상태: SpO2/호흡수/혈압/의식, 휴식 시에도 지속 또는 악화?"
-    ],
-    sn:[
-      "현재 증상은 심장/폐 등 응급 원인 가능성이 있어 즉시 평가가 필요할 수 있습니다.",
-      "호흡곤란·실신·지속/악화되는 흉통·식은땀·신경학적 증상이 있으면 바로 응급실로 가세요.",
-      "지금 상태가 애매해도 악화 시 지체하지 말고 즉시 내원/응급실 방문하세요."
-    ]
-  },
-  {
-    id:"dyspnea",
-    name:"호흡곤란",
-    match:["호흡곤란","숨참","숨이 차","dyspnea","천명","wheezing","SpO2","객혈"],
-    red:["SpO2","청색증","의식저하","저혈압","객혈","흉통"],
-    dx:[
-      "천식/기관지경련 또는 COPD 악화",
-      "폐렴/감염성 호흡기 질환",
-      "폐색전증(PE) 또는 심부전 악화"
-    ],
-    q:[
-      "SpO2/호흡수/말문장 가능? 청색증·의식변화 있나?",
-      "흉통·객혈·다리부종/통증·최근 수술/장거리·임신/산후 등 혈전 위험?",
-      "발열·가래·흉통/심부전 병력·흡연력·약물(진정제 등) 확인?"
-    ],
-    sn:[
-      "호흡곤란은 악화 시 위험할 수 있어 산소포화도/활력 확인이 중요합니다.",
-      "말하기 어려울 정도의 숨참, SpO2 저하, 흉통·객혈·의식변화가 있으면 즉시 응급실로 가세요.",
-      "증상이 지속/악화하면 지체하지 말고 재내원하거나 응급실 평가가 필요합니다."
-    ]
-  },
-  {
-    id:"abd",
-    name:"복통",
-    match:["복통","배가","복부","abdominal","토혈","혈변","구토","반발통","설사","변비"],
-    red:["토혈","혈변","복부강직","반발통","저혈압","의식저하","고열","임신","산후"],
-    dx:[
-      "급성복증(충수염/담낭염/천공/장폐색 등) 가능성",
-      "위장관 출혈 가능성(토혈/혈변 동반 시)",
-      "산부인과적 응급 포함 감별 필요(임신 가능/산후/질출혈)"
-    ],
-    q:[
-      "통증 위치/이동, 지속·악화, 반발통·강직, 구토·발열·혈변/토혈 동반?",
-      "임신 가능/마지막 생리/산후 여부 + 질출혈·골반통 동반?",
-      "수술력(유착), NSAID/항응고제, 탈수, 소변증상(옆구리통) 확인?"
-    ],
-    sn:[
-      "복통은 원인에 따라 응급 수술/출혈 가능성이 있어 경고 신호 확인이 중요합니다.",
-      "지속·악화 통증, 반복 구토, 고열, 토혈/혈변, 실신/저혈압이 있으면 즉시 응급실로 가세요.",
-      "오늘 좋아져도 다시 악화하면 바로 재평가가 필요합니다."
-    ]
-  },
-  {
-    id:"head",
-    name:"두통",
-    match:["두통","머리가","headache","번개","최악","경부강직","시야","마비","의식","구토"],
-    red:["갑자기","번개","최악","경부강직","의식저하","마비","언어","시야","고열","경련","임신","산후"],
-    dx:[
-      "뇌혈관성 원인(지주막하출혈 등) 가능성(갑작·최악/신경학적 증상 시)",
-      "수막염/뇌염 등 감염 가능성(발열·경부강직/의식변화 동반 시)",
-      "편두통/긴장성 두통(레드플래그 없을 때)"
-    ],
-    q:[
-      "발병 양상(갑자기/번개), ‘평생 최악’ 여부 + 신경학적 결손(마비/언어/시야)?",
-      "발열·경부강직·의식변화·경련·발진 등 감염/중증 징후?",
-      "임신/산후, 항응고제, 외상, 면역저하/암 병력 등 위험인자?"
-    ],
-    sn:[
-      "갑자기 시작한 심한 두통이나 신경학적 증상은 응급 평가가 필요할 수 있습니다.",
-      "의식변화·마비·시야장애·경련·고열·경부강직이 있으면 즉시 응급실로 가세요.",
-      "통증이 지속/악화하거나 새 증상이 생기면 바로 재내원하세요."
-    ]
-  }
-];
-
-const COMMON_RED = ["의식저하","실신","경련","마비","말이 어눌","청색증","저혈압","SpO2","객혈","토혈","혈변","흉통","호흡곤란","갑자기","최악","경부강직","고열"];
-
-function pickCategory(text){
-  for(const c of CATS){
-    if(hasAny(text, c.match)) return c;
-  }
-  return null;
-}
-function detectRed(text, cat){
-  const hits = [];
-  const pool = [...new Set([...(cat?.red||[]), ...COMMON_RED])];
-  for(const k of pool){
-    if(normalize(text).includes(normalize(k))) hits.push(k);
-  }
-  return hits;
-}
-
-/* =========================
-   범용 템플릿(카테고리 못 잡거나 정보 부족해도 작동)
-   ========================= */
-function genericDx(){
-  // 1차 의료에서 "우선 배제" 관점으로 3개
-  return [
-    "생명위협 가능 원인(기도/호흡/순환/출혈/신경학적 응급) 우선 배제 필요",
-    "감염/염증성 질환 가능성(발열·전신증상 동반 여부 확인)",
-    "약물/대사/외상/기저질환 악화 가능성(복용약·기저질환·외상력 확인)"
-  ];
-}
-function genericQs(){
-  return [
-    "의식변화/실신/호흡곤란/흉통/출혈(토혈·혈변)/신경학적 증상(마비·언어·시야) 있나요?",
-    "증상이 ‘갑자기’ 시작했나요, 그리고 점점 악화하나요? 현재 걷기/말하기가 가능한가요?",
-    "고위험 요인(임신·산후, 항응고제, 면역저하/암, 최근 수술·장거리, 큰 외상) 있나요?"
-  ];
-}
-function genericSN(){
-  return [
-    "현재 증상은 원인이 확정되지 않아 경과 관찰/추가 평가가 필요할 수 있습니다.",
-    "호흡곤란·실신·의식변화·지속 악화 통증·출혈·신경학적 증상이 있으면 즉시 응급실로 가세요.",
-    "증상이 지속/악화하거나 새 증상이 생기면 지체하지 말고 재내원하세요."
-  ];
-}
-
-/* =========================
-   EMR 문구 생성(바로 붙여넣기용)
-   ========================= */
 function sexK(sex){
   if(sex==="M") return "남";
   if(sex==="F") return "여";
@@ -487,7 +344,273 @@ function safe(v, fallback="미상"){
   return (v && String(v).trim().length) ? String(v).trim() : fallback;
 }
 
-function buildNote(input, cat, dx, qs, sn){
+/* =========================
+   내부 카테고리(노출은 “카테고리: 자동” 정도만)
+   dx는 반드시 “실제 질환 + ICD-10” 3개로 구성
+   ========================= */
+const CATS = [
+  {
+    id:"chest",
+    name:"흉통/흉부불편",
+    match:["흉통","가슴통증","가슴이","쥐어짜","압박감","방사","식은땀","chest pain","胸痛","턱","왼팔"],
+    red:["실신","의식저하","호흡곤란","저혈압","SpO2","청색증","신경학적","마비"],
+    dx:[
+      {d:"급성심근경색(AMI)", icd:"I21.9"},
+      {d:"폐색전증(PE) (acute, w/o acute cor pulmonale)", icd:"I26.99"},
+      {d:"대동맥박리(Dissection of aorta, unspecified site)", icd:"I71.00"},
+    ],
+    q:[
+      "통증 시작: 갑자기? 최대 강도는 언제? (박리/AMI 쪽)", 
+      "방사(턱/팔/등)·식은땀·구역·실신·호흡곤란 동반? (AMI/PE/박리)",
+      "혈전/심혈관 위험: 최근 수술·장거리·DVT, OCP/임신·산후, 흡연, HTN/DM?"
+    ],
+    sn:(ctx)=>[
+      `현재 증상은 심장/폐/대혈관 원인 가능성이 있어 ${ctx.urgentWord} 평가가 필요할 수 있습니다.`,
+      "호흡곤란·실신·지속/악화되는 흉통·식은땀·신경학적 증상이 있으면 즉시 응급실로 가세요.",
+      "검사가 늦어지면 위험할 수 있어, 상태가 애매해도 악화 시 지체하지 말고 바로 방문하세요."
+    ],
+    next:(ctx)=>[
+      `우선순위: 활력/SpO2 확인 → ${ctx.urgentWord} 심전도/심근효소/영상 필요 여부 판단.`,
+      "PE/박리 위험 신호가 있으면 지체 없이 응급실/상급기관 의뢰.",
+      "불확실하면 단기 재평가 시간(예: 24h 이내)과 악화 기준을 명확히 안내."
+    ]
+  },
+  {
+    id:"dyspnea",
+    name:"호흡곤란",
+    match:["호흡곤란","숨참","숨이 차","dyspnea","천명","wheezing","SpO2","객혈","가래","청색증"],
+    red:["SpO2","청색증","의식저하","저혈압","객혈","흉통"],
+    dx:[
+      {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+      {d:"천식 급성 악화(Asthma with acute exacerbation)", icd:"J45.901"},
+      {d:"심부전(Heart failure, unspecified)", icd:"I50.9"},
+    ],
+    q:[
+      "SpO2/호흡수/문장 말하기 가능? 청색증·의식변화? (호흡부전 스크리닝)",
+      "흉통·객혈·다리부종/통증·최근 수술/장거리·임신/산후? (PE/위험)",
+      "발열·가래·흉부통증/심부전 병력·흡연력·천식/COPD 병력? (폐렴/천식/심부전)"
+    ],
+    sn:(ctx)=>[
+      `호흡곤란은 악화 시 위험할 수 있어 ${ctx.urgentWord} 산소포화도/활력 확인이 필요합니다.`,
+      "말이 끊길 정도 숨참, SpO2 저하, 흉통·객혈·의식변화가 있으면 즉시 응급실로 가세요.",
+      "증상이 지속/악화하면 지체하지 말고 재내원하거나 응급실 평가가 필요합니다."
+    ],
+    next:(ctx)=>[
+      `우선순위: SpO2/호흡수 확인 → ${ctx.urgentWord} 산소/기관지확장제/흉부평가 필요 여부.`,
+      "감염 의심 시 CXR/검사 고려, 심부전 의심 시 부종/청진/체중변화 확인.",
+      "PE/급성악화 의심 시 즉시 의뢰 기준(SpO2↓, 흉통, 객혈 등) 명확화."
+    ]
+  },
+  {
+    id:"abd",
+    name:"복통",
+    match:["복통","배가","복부","abdominal","구토","토혈","혈변","흑색변","반발통","오른쪽아래","우하복부"],
+    red:["토혈","혈변","흑색변","복부강직","반발통","저혈압","의식저하","고열","임신","산후"],
+    dx:[
+      {d:"급성 충수염(Acute appendicitis, unspecified)", icd:"K35.80"},
+      {d:"급성 담낭염(Acute cholecystitis)", icd:"K81.0"},
+      {d:"위장관 출혈(GI hemorrhage, unspecified)", icd:"K92.2"},
+    ],
+    q:[
+      "통증 위치/이동(우하복부? RUQ?), 반발통·강직, 지속 악화? (급성복증)",
+      "구토/발열/황달·흑색변·혈변·토혈 동반? (담낭염/출혈)",
+      "임신 가능/산후 여부 + 항응고제/NSAID 복용 + 수술력(유착) 확인?"
+    ],
+    sn:(ctx)=>[
+      `복통은 원인에 따라 수술/출혈 가능성이 있어 ${ctx.urgentWord} 경고 신호 확인이 중요합니다.`,
+      "지속·악화 통증, 반복 구토, 고열, 흑색변/혈변/토혈, 실신/저혈압이 있으면 즉시 응급실로 가세요.",
+      "오늘 좋아져도 다시 악화하면 바로 재평가가 필요합니다."
+    ],
+    next:(ctx)=>[
+      `우선순위: 복부진찰 + ${ctx.urgentWord} 급성복증(반발통/강직) 여부 확인.`,
+      "출혈 의심(흑색변/토혈/어지럼) 시 즉시 응급실/상급기관.",
+      "경미해도 재평가 시간과 악화 기준을 명확히(특히 야간/주말)."
+    ]
+  },
+  {
+    id:"head",
+    name:"두통",
+    match:["두통","머리가","headache","번개","최악","경부강직","시야","마비","의식","구토","경련"],
+    red:["갑자기","번개","최악","경부강직","의식저하","마비","언어","시야","고열","경련","임신","산후"],
+    dx:[
+      {d:"지주막하출혈(Subarachnoid hemorrhage, unspecified)", icd:"I60.9"},
+      {d:"수막염(Meningitis, unspecified)", icd:"G03.9"},
+      {d:"편두통(Migraine, unspecified, not intractable, w/o status)", icd:"G43.909"},
+    ],
+    q:[
+      "발병 양상(갑자기/번개)·‘평생 최악’·신경학적 결손(마비/언어/시야)?",
+      "발열·경부강직·의식변화·경련·발진 동반? (수막염/중증)",
+      "임신/산후, 항응고제, 외상, 면역저하/암 병력? (고위험)"
+    ],
+    sn:(ctx)=>[
+      `갑자기 시작한 심한 두통은 ${ctx.urgentWord} 응급 평가가 필요할 수 있습니다.`,
+      "의식변화·마비·시야장애·경련·고열·경부강직이 있으면 즉시 응급실로 가세요.",
+      "통증이 지속/악화하거나 새 증상이 생기면 바로 재내원하세요."
+    ],
+    next:(ctx)=>[
+      `우선순위: 레드플래그(급성발병/신경학적 결손/발열) 확인 → ${ctx.urgentWord} 영상/응급 의뢰 고려.`,
+      "진통제로 호전돼도 ‘패턴 변화’면 재평가 필요.",
+      "재내원 기준(신경학적 증상/구토 지속/의식변화)을 구체적으로 제시."
+    ]
+  }
+];
+
+/* 공통 레드플래그 키워드 */
+const COMMON_RED = ["의식저하","실신","경련","마비","말이 어눌","청색증","저혈압","SpO2","객혈","토혈","혈변","흑색변","흉통","호흡곤란","갑자기","최악","경부강직","고열"];
+
+/* =========================
+   카테고리 선택 + “증상-specific” 보강(힌트 단어)
+   - urgentWord: “즉시/당일” 같은 표현을 입력 단서로 바꿈
+   ========================= */
+function pickCategory(text){
+  for(const c of CATS){
+    if(hasAny(text, c.match)) return c;
+  }
+  return null;
+}
+
+function detectRed(text, cat){
+  const hits = [];
+  const pool = [...new Set([...(cat?.red||[]), ...COMMON_RED])];
+  for(const k of pool){
+    if(normalize(text).includes(normalize(k))) hits.push(k);
+  }
+  return hits;
+}
+
+/* 증상별 urgency 힌트(아주 단순하지만 출력이 더 specific하게 보이도록) */
+function deriveContext(fullText, vitalsText){
+  const t = normalize(fullText + " " + vitalsText);
+  const urgent = hasAny(t, ["저혈압","spO2 9","spO2:9","90/","의식저하","실신","경련","청색증","객혈","토혈","혈변","흑색변"]) ||
+                 hasAny(t, ["갑자기","번개","최악"]);
+  return { urgentWord: urgent ? "즉시" : "가능하면 당일" };
+}
+
+/* =========================
+   Generic (카테고리 못 잡을 때도 “질환+ICD 3개”로 강제)
+   - 키워드로 약간이라도 방향을 잡음
+   ========================= */
+function genericDx(full){
+  const t = normalize(full);
+
+  // 발열/기침
+  if(hasAny(t, ["발열","열","오한","기침","가래","인후","목아픔","sore throat"])){
+    return [
+      {d:"급성 상기도감염(Acute URI)", icd:"J06.9"},
+      {d:"급성 기관지염(Acute bronchitis, unspecified)", icd:"J20.9"},
+      {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+    ];
+  }
+  // 어지럼/실신
+  if(hasAny(t, ["어지럼","현기증","vertigo","실신","핑"])){
+    return [
+      {d:"실신 및 허탈(Syncope and collapse)", icd:"R55"},
+      {d:"양성 돌발성 체위성 현훈(BPPV)", icd:"H81.10"},
+      {d:"전정신경염(Vestibular neuritis)", icd:"H81.20"},
+    ];
+  }
+  // 요로증상
+  if(hasAny(t, ["배뇨","소변","빈뇨","절박뇨","배뇨통","혈뇨","옆구리"])){
+    return [
+      {d:"급성 방광염(Acute cystitis without hematuria)", icd:"N30.00"},
+      {d:"신우신염(Acute pyelonephritis)", icd:"N10"},
+      {d:"요로결석(Calculus of kidney, unspecified)", icd:"N20.0"},
+    ];
+  }
+  // 흉통/호흡
+  if(hasAny(t, ["가슴","흉","숨","호흡","dyspnea","chest"])){
+    return [
+      {d:"급성심근경색(AMI)", icd:"I21.9"},
+      {d:"폐색전증(PE)", icd:"I26.99"},
+      {d:"폐렴(Pneumonia, unspecified organism)", icd:"J18.9"},
+    ];
+  }
+  // 복통/구토
+  if(hasAny(t, ["복통","배","구토","설사","혈변","토혈"])){
+    return [
+      {d:"급성 위장염(Acute gastroenteritis, unspecified)", icd:"K52.9"},
+      {d:"급성 충수염(Acute appendicitis, unspecified)", icd:"K35.80"},
+      {d:"위장관 출혈(GI hemorrhage, unspecified)", icd:"K92.2"},
+    ];
+  }
+  // 두통
+  if(hasAny(t, ["두통","머리","headache","시야","마비","경부"])){
+    return [
+      {d:"편두통(Migraine, unspecified)", icd:"G43.909"},
+      {d:"긴장형 두통(Tension-type headache, unspecified)", icd:"G44.209"},
+      {d:"지주막하출혈(Subarachnoid hemorrhage, unspecified)", icd:"I60.9"},
+    ];
+  }
+
+  // 완전 일반
+  return [
+    {d:"급성 통증(Acute pain, unspecified)", icd:"R52"},
+    {d:"기타 권태감 및 피로(Malaise and fatigue)", icd:"R53.81"},
+    {d:"상세불명 증상/징후(Other ill-defined symptoms)", icd:"R68.89"},
+  ];
+}
+
+function genericQs(full){
+  const t = normalize(full);
+  // 증상에 맞춰 질문을 조금 바꿈
+  if(hasAny(t, ["가슴","흉","숨","호흡","dyspnea","chest"])){
+    return [
+      "실신/의식변화, 호흡곤란, 흉통 지속/악화, 객혈/청색증 있나요?",
+      "통증이 갑자기 시작했나요? 방사통(팔/턱/등)·식은땀·구역 동반?",
+      "최근 수술/장거리/임신·산후/혈전 병력 또는 HTN/DM/흡연 위험인자 있나요?"
+    ];
+  }
+  if(hasAny(t, ["복통","구토","설사","혈변","토혈","흑색변"])){
+    return [
+      "반발통/복부강직, 지속 악화, 실신/저혈압 증상 있나요?",
+      "토혈/혈변/흑색변, 반복 구토, 고열 동반하나요?",
+      "NSAID/항응고제 복용, 임신 가능/산후, 수술력(유착) 있나요?"
+    ];
+  }
+  if(hasAny(t, ["두통","머리","경부","시야","마비","경련","번개","최악"])){
+    return [
+      "갑작/번개두통 또는 ‘평생 최악’인가요? 신경학적 결손(마비/언어/시야) 있나요?",
+      "발열·경부강직·의식변화·경련 동반하나요?",
+      "외상/항응고제/임신·산후/면역저하·암 병력 있나요?"
+    ];
+  }
+  return [
+    "의식변화/실신/호흡곤란/흉통/출혈(토혈·혈변)/신경학적 증상(마비·언어·시야) 있나요?",
+    "증상이 갑자기 시작했나요? 빠르게 악화하나요? 현재 보행/대화 가능한가요?",
+    "고위험 요인(임신·산후, 항응고제, 면역저하/암, 최근 수술·장거리, 큰 외상) 있나요?"
+  ];
+}
+
+function genericSN(ctx){
+  return [
+    `현재 증상은 원인이 확정되지 않아 ${ctx.urgentWord} 재평가/추가 평가가 필요할 수 있습니다.`,
+    "호흡곤란·실신·의식변화·지속 악화 통증·출혈·신경학적 증상이 있으면 즉시 응급실로 가세요.",
+    "증상이 지속/악화하거나 새 증상이 생기면 지체하지 말고 재내원하세요."
+  ];
+}
+
+function genericNext(ctx){
+  return [
+    `우선순위: 활력/SpO2 확인 → ${ctx.urgentWord} 레드플래그 여부부터 정리.`,
+    "검사/의뢰가 필요한지 판단하고, 불확실하면 단기 재평가 시간을 잡기.",
+    "악화 기준(응급실/즉시 내원)을 환자에게 문장으로 명확히 전달."
+  ];
+}
+
+/* =========================
+   표시용 포맷
+   ========================= */
+function dxToLines(dxObjs){
+  return dxObjs.map((x)=>`${x.d} (ICD-10: ${x.icd})`);
+}
+function dxToCopy(dxObjs){
+  return dxObjs.map((x,i)=>`#${i+1} ${x.d} (ICD-10: ${x.icd})`).join("\n");
+}
+
+/* =========================
+   EMR 노트 생성 (바로 붙여넣기용)
+   ========================= */
+function buildNote(input, cat, dxObjs, qs, sn, next){
   const ts = nowStamp();
   const age = safe(input.age, "나이 미상");
   const sex = sexK(input.sex);
@@ -498,23 +621,24 @@ function buildNote(input, cat, dx, qs, sn){
   const pmh = safe(input.pmh, "미상");
   const preg = input.preg ? (input.preg==="pregnant" ? "임신 중" : "산후(6주 이내)") : "미상/해당 없음";
   const memo = safe(input.memo, "없음/미상");
+  const catName = cat ? cat.name : "일반(범용)";
 
-  // DETAIL 모드면 질문/안전망을 한 줄 더 친절하게 넣음
+  const ddxBlock = dxObjs.map((x,i)=>`- #${i+1} ${x.d} (ICD-10: ${x.icd})`).join("\n");
   const qBlock = qs.map((q,i)=>`- Q${i+1}) ${q}  [ ]예  [ ]아니오  [ ]미상`).join("\n");
   const snBlock = sn.map((s)=>`- ${s}`).join("\n");
-
-  const ddxBlock = dx.map((d,i)=>`- #${i+1} ${d}`).join("\n");
+  const nextBlock = next.map((s)=>`- ${s}`).join("\n");
 
   const base = [
     `=== Encounter Note (paste-ready) ===`,
     `Timestamp: ${ts}`,
+    `Category: ${catName}`,
     ``,
     `[Chief Complaint]`,
     `- ${age}세 ${sex} / 주증상: ${cc}`,
     ``,
     `[HPI]`,
     `- 시작/기간: ${duration}`,
-    `- (환자진술 기반) 동반/악화요인 등: ${memo}`,
+    `- 추가 메모/동반: ${memo}`,
     ``,
     `[Vitals/Key Data]`,
     `- ${vitals}`,
@@ -523,15 +647,14 @@ function buildNote(input, cat, dx, qs, sn){
     `- 기저질환/약물: ${pmh}`,
     `- 임신/산후: ${preg}`,
     ``,
-    `[Assessment - Differential (Top 3)]`,
+    `[Assessment - Differential (Top 3, ICD-10 included)]`,
     `${ddxBlock}`,
     ``,
     `[High-risk screen (asked)]`,
     `${qBlock}`,
     ``,
-    `[Plan / Disposition]`,
-    `- (필요 시) 응급 원인 배제 위해 즉시 평가/상급기관 의뢰 또는 응급실 방문 권고함.`,
-    `- 대안/추적: 증상 지속/악화 시 재평가(예: 24–48시간 내) 안내함.`,
+    `[Plan / Next steps]`,
+    `${nextBlock}`,
     ``,
     `[Safety-net (patient instructions)]`,
     `${snBlock}`,
@@ -544,30 +667,16 @@ function buildNote(input, cat, dx, qs, sn){
     base.push(
       ``,
       `[Documentation add-on]`,
-      `- 환자 선택(내원/검사/이송) 및 거부/지연 시 사유: [ ]없음  [ ]있음( )  [ ]미상`,
-      `- 연락/추적 계획(검사 결과 확인/재연락): [ ]안내함  [ ]미상`
+      `- 환자 선택(검사/이송/응급실 방문) 및 거부/지연 시 사유: [ ]없음  [ ]있음( )  [ ]미상`,
+      `- 추적 계획(재평가/검사 결과 확인/연락): [ ]안내함  [ ]미상`
     );
   }
 
   return base.join("\n");
 }
 
-function buildChat3Lines(input, sn){
-  // “챠팅/전화”용 3줄: EMR에 붙여넣기 쉬운 형태
-  const age = safe(input.age, "나이 미상");
-  const sex = sexK(input.sex);
-  const cc = safe(input.cc, "주증상 미상");
-  const dur = safe(input.duration, "미상");
-
-  return [
-    `비대면(챠팅/전화) 요약: ${age}세 ${sex}, '${cc}' (기간: ${dur}).`,
-    `설명/권고: 위험 가능성 설명 후, 상태에 따라 즉시 내원/응급실 평가 필요할 수 있음을 안내.`,
-    `안전망: ${sn[1]}` // 가운데 줄(응급 기준) 고정
-  ];
-}
-
 /* =========================
-   렌더 & 이벤트
+   렌더
    ========================= */
 function renderAll(){
   const input = {
@@ -581,13 +690,13 @@ function renderAll(){
     memo: $("memo").value,
   };
 
-  // 필수 체크(허들 낮게: 누락해도 미상으로 만들지만, 성별/나이는 가능하면 입력 유도)
-  const fullText = `${input.age} ${input.sex} ${input.cc} ${input.duration} ${input.vitals} ${input.pmh} ${input.preg} ${input.memo}`.trim();
+  const fullText = `${input.age} ${input.sex} ${input.cc} ${input.duration} ${input.pmh} ${input.preg} ${input.memo}`.trim();
+  const ctx = deriveContext(fullText, input.vitals || "");
 
   const cat = pickCategory(fullText);
   $("categoryPill").textContent = `카테고리: ${cat ? cat.name : "일반(범용)"}`;
 
-  const redHits = detectRed(fullText, cat);
+  const redHits = detectRed(fullText + " " + (input.vitals||""), cat);
   if(redHits.length){
     $("alertBox").classList.add("show");
     $("alertText").textContent = `감지 키워드: ${redHits.slice(0,8).join(", ")}${redHits.length>8?" ...":""}`;
@@ -596,28 +705,30 @@ function renderAll(){
     $("alertText").textContent = "";
   }
 
-  const dx = cat ? cat.dx.slice(0,3) : genericDx();
-  const qs = cat ? cat.q.slice(0,3) : genericQs();
-  const sn = cat ? cat.sn.slice(0,3) : genericSN();
+  // dx/qs/sn/next 생성 (항상 specific & 항상 3개)
+  const dxObjs = cat ? cat.dx.slice(0,3) : genericDx(fullText);
+  const qs = cat ? cat.q.slice(0,3) : genericQs(fullText);
 
-  setList($("dxList"), dx);
-  setList($("qList"), qs);
+  let sn = cat ? cat.sn(ctx).slice(0,3) : genericSN(ctx);
+  let next = cat ? cat.next(ctx).slice(0,3) : genericNext(ctx);
 
-  // 안전망은 “짧게”에서는 3줄 그대로, “조금 더”에서는 1번 줄을 좀 더 구체화
-  let snUse = [...sn];
   if(DETAIL==="detail"){
-    snUse[0] = snUse[0] + " (증상이 새로 생기거나 패턴이 달라지면 즉시 재평가 권고)";
+    // detail 모드에서 1줄씩만 “조금 더” 구체화
+    sn = [...sn];
+    next = [...next];
+    sn[0] = sn[0] + " (가능하면 환자에게 ‘지금 무엇을 하면 되는지’ 한 문장으로 반복 확인)";
+    next[0] = next[0] + " (기록: 레드플래그 음성/양성 항목을 문장으로 남김)";
   }
-  setList($("snList"), snUse);
 
-  const chat3 = buildChat3Lines(input, snUse);
-  setList($("chatNoteList"), chat3);
+  setList($("dxList"), dxToLines(dxObjs));
+  setList($("qList"), qs);
+  setList($("snList"), sn);
+  setList($("nextList"), next);
 
-  const note = buildNote(input, cat, dx, qs, snUse);
+  const note = buildNote(input, cat, dxObjs, qs, sn, next);
   $("noteOut").textContent = note;
 
-  // 마지막 입력 저장
-  localStorage.setItem("pcp_cds_last_v2", JSON.stringify(input));
+  localStorage.setItem("pcp_cds_last_v3", JSON.stringify(input));
 }
 
 function resetAll(){
@@ -627,15 +738,14 @@ function resetAll(){
   $("dxList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
   $("qList").innerHTML  = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
   $("snList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
-  $("chatNoteList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
+  $("nextList").innerHTML = `<li class="muted">‘생성’ 누르면 채워짐</li>`;
   $("noteOut").textContent="(여기에 생성됨)";
   $("categoryPill").textContent="카테고리: 자동";
   $("alertBox").classList.remove("show");
-  localStorage.removeItem("pcp_cds_last_v2");
+  localStorage.removeItem("pcp_cds_last_v3");
 }
 
 $("genBtn").addEventListener("click", ()=>{
-  // 성별/나이 누락이어도 생성은 되게 하고, 토스트로만 안내
   if(!$("age").value.trim() || !$("sex").value || !$("cc").value.trim()){
     toast("필수 입력이 일부 비어있어도 ‘미상’으로 생성합니다");
   }
@@ -667,8 +777,8 @@ $("copySNBtn").addEventListener("click", ()=>{
   const items=[...document.querySelectorAll("#snList li")].map(li=>li.textContent);
   copyText(items.map(x=>`- ${x}`).join("\n"));
 });
-$("copyChatNoteBtn").addEventListener("click", ()=>{
-  const items=[...document.querySelectorAll("#chatNoteList li")].map(li=>li.textContent);
+$("copyNextBtn").addEventListener("click", ()=>{
+  const items=[...document.querySelectorAll("#nextList li")].map(li=>li.textContent);
   copyText(items.map(x=>`- ${x}`).join("\n"));
 });
 
@@ -678,7 +788,6 @@ $("shortBtn").addEventListener("click", ()=>{
   $("shortBtn").classList.add("active");
   $("detailBtn").classList.remove("active");
   toast("짧게 모드");
-  // 이미 생성된 상태면 즉시 재렌더
   if($("noteOut").textContent && $("noteOut").textContent !== "(여기에 생성됨)") renderAll();
 });
 $("detailBtn").addEventListener("click", ()=>{
@@ -692,7 +801,7 @@ $("detailBtn").addEventListener("click", ()=>{
 /* 초기 로딩: 마지막 입력 복원 */
 (function init(){
   try{
-    const raw = localStorage.getItem("pcp_cds_last_v2");
+    const raw = localStorage.getItem("pcp_cds_last_v3");
     if(raw){
       const d = JSON.parse(raw);
       $("age").value = d.age || "";
